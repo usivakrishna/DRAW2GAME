@@ -1,0 +1,22 @@
+# Dependencies and build output
+node_modules/
+dist/
+coverage/
+
+# Local environment files
+.env
+.env.local
+.env.*.local
+
+# Tooling
+.vite/
+*.tsbuildinfo
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Generated runtime assets
+public/models/
