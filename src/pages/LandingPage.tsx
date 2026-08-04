@@ -17,7 +17,6 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { PageContainer } from "@/components/layout/PageContainer";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
 const workflowSteps = [
@@ -187,25 +186,25 @@ export function LandingPage() {
             initial={{ opacity: 0, y: 15 }}
             transition={{ delay: 0.3, duration: 0.6 }}
           >
-            <Button
-              asChild
-              className="h-12 w-full sm:w-auto px-6 text-base font-bold bg-brand-600 text-white shadow-lg shadow-brand-600/30 hover:bg-brand-500 hover:shadow-brand-600/40 active:scale-[0.98] transition-all"
+            {/* Primary CTA — rendered as a plain styled Link to avoid asChild/Slot className merge issues */}
+            <Link
+              aria-label="Open drawing canvas studio"
+              className="inline-flex h-12 w-full sm:w-auto items-center justify-center gap-2 rounded-lg bg-brand-600 px-6 text-base font-bold text-white shadow-lg shadow-brand-600/30 transition-all hover:bg-brand-500 hover:shadow-brand-600/40 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
+              to="/studio"
             >
-              <Link to="/studio" className="flex items-center justify-center gap-2">
-                <PencilLine className="size-5 shrink-0" />
-                <span>Start Drawing Canvas</span>
-                <ArrowRight className="size-4 shrink-0" />
-              </Link>
-            </Button>
-            <Button
-              asChild
-              className="h-12 w-full sm:w-auto border border-slate-700 bg-slate-900/90 px-6 text-base font-bold text-slate-100 shadow-md hover:border-indigo-500/50 hover:bg-slate-800 hover:text-white active:scale-[0.98] transition-all"
+              <PencilLine className="size-5 shrink-0" />
+              <span>Start Drawing Canvas</span>
+              <ArrowRight className="size-4 shrink-0" />
+            </Link>
+            {/* Secondary CTA — same pattern: plain styled Link, no Button wrapper */}
+            <Link
+              aria-label="Explore the project dashboard"
+              className="inline-flex h-12 w-full sm:w-auto items-center justify-center gap-2 rounded-lg border border-slate-700 bg-slate-900 px-6 text-base font-bold text-slate-100 shadow-md transition-all hover:border-indigo-500 hover:bg-slate-800 hover:text-white active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
+              to="/dashboard"
             >
-              <Link to="/dashboard" className="flex items-center justify-center gap-2">
-                <Layers className="size-5 text-indigo-400 shrink-0" />
-                <span>Explore Dashboard</span>
-              </Link>
-            </Button>
+              <Layers className="size-5 shrink-0 text-indigo-400" />
+              <span>Explore Dashboard</span>
+            </Link>
           </motion.div>
 
           {/* Metric Stats Banner */}
@@ -443,12 +442,13 @@ export function LandingPage() {
                 Test Ready-to-Play Sketch Templates
               </h2>
             </div>
-            <Button asChild className="bg-brand-600 hover:bg-brand-500">
-              <Link to="/studio">
-                <PencilLine className="mr-2 size-4" />
-                Create Custom Sketch
-              </Link>
-            </Button>
+            <Link
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-brand-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
+              to="/studio"
+            >
+              <PencilLine className="size-4" />
+              Create Custom Sketch
+            </Link>
           </div>
 
           <div className="mt-10 grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -491,12 +491,13 @@ export function LandingPage() {
                     </h4>
                     <p className="text-xs text-slate-400">Click to preview details</p>
                   </div>
-                  <Button asChild size="sm" className="border border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-white">
-                    <Link to="/studio">
-                      Load Sketch
-                      <ArrowRight className="ml-1 size-3.5" />
-                    </Link>
-                  </Button>
+                  <Link
+                    className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-slate-700 bg-slate-800 px-3 text-sm font-semibold text-slate-200 transition-colors hover:bg-slate-700 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
+                    to="/studio"
+                  >
+                    Load Sketch
+                    <ArrowRight className="size-3.5" />
+                  </Link>
                 </div>
               </Card>
             ))}
@@ -561,18 +562,20 @@ export function LandingPage() {
             </p>
 
             <div className="mt-8 flex flex-wrap justify-center gap-4">
-              <Button asChild className="h-12 bg-white px-8 text-base font-bold text-slate-950 hover:bg-slate-100 shadow-xl">
-                <Link to="/studio">
-                  <PencilLine className="mr-2 size-5" />
-                  Launch Studio Canvas
-                </Link>
-              </Button>
-              <Button asChild className="h-12 border-slate-400/40 text-white hover:bg-white/10" variant="outline">
-                <Link to="/dashboard">
-                  <Boxes className="mr-2 size-5" />
-                  View Dashboard
-                </Link>
-              </Button>
+              <Link
+                className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-white px-8 text-base font-bold text-slate-950 shadow-xl transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
+                to="/studio"
+              >
+                <PencilLine className="size-5" />
+                Launch Studio Canvas
+              </Link>
+              <Link
+                className="inline-flex h-12 items-center justify-center gap-2 rounded-lg border border-slate-400/40 px-8 text-base font-bold text-white transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:ring-offset-2"
+                to="/dashboard"
+              >
+                <Boxes className="size-5" />
+                View Dashboard
+              </Link>
             </div>
           </div>
         </PageContainer>
