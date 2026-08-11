@@ -27,7 +27,7 @@ export function AppHeader() {
           className="flex shrink-0 items-center gap-2 font-semibold tracking-tight text-slate-950"
           to="/"
         >
-          <span className="grid size-8 place-items-center rounded-lg bg-brand-600 text-white shadow-sm">
+          <span className="bg-brand-600 grid size-8 place-items-center rounded-lg text-white shadow-sm">
             <Gamepad2 aria-hidden="true" className="size-4" />
           </span>
           <span className="font-bold tracking-tight">DRAW2GAME</span>
@@ -113,4 +113,3 @@ export function AppHeader() {
     </header>
   );
 }
-

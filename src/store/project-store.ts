@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import type { ProjectStage, ProjectSummary } from "@/types/project";
+import type { StudioDocument } from "@/types/studio";
 import { createId } from "@/utils/ids";
 
 interface ProjectStore {
@@ -9,8 +10,10 @@ interface ProjectStore {
   projects: ProjectSummary[];
   removeProject: (projectId: string) => void;
   renameProject: (projectId: string, name: string) => void;
+  saveStudioDocument: (projectId: string, document: StudioDocument) => void;
   setActiveProject: (projectId: string | null) => void;
   setProjectStage: (projectId: string, stage: ProjectStage) => void;
+  studioDocuments: Record<string, StudioDocument>;
 }
 
 function getProjectName(name: string) {
@@ -22,6 +25,7 @@ export const useProjectStore = create<ProjectStore>()(
     (set) => ({
       activeProjectId: null,
       projects: [],
+      studioDocuments: {},
       createProject: (name) => {
         const timestamp = new Date().toISOString();
         const project: ProjectSummary = {
@@ -43,6 +47,9 @@ export const useProjectStore = create<ProjectStore>()(
         set((state) => ({
           activeProjectId: state.activeProjectId === projectId ? null : state.activeProjectId,
           projects: state.projects.filter((project) => project.id !== projectId),
+          studioDocuments: Object.fromEntries(
+            Object.entries(state.studioDocuments).filter(([id]) => id !== projectId),
+          ),
         }));
       },
       renameProject: (projectId, name) => {
@@ -59,6 +66,22 @@ export const useProjectStore = create<ProjectStore>()(
                 }
               : project,
           ),
+        }));
+      },
+      saveStudioDocument: (projectId, document) => {
+        set((state) => ({
+          projects: state.projects.map((project) =>
+            project.id === projectId
+              ? {
+                  ...project,
+                  updatedAt: document.savedAt,
+                }
+              : project,
+          ),
+          studioDocuments: {
+            ...state.studioDocuments,
+            [projectId]: document,
+          },
         }));
       },
       setActiveProject: (projectId) => {
@@ -85,6 +108,7 @@ export const useProjectStore = create<ProjectStore>()(
       partialize: (state) => ({
         activeProjectId: state.activeProjectId,
         projects: state.projects,
+        studioDocuments: state.studioDocuments,
       }),
       storage: createJSONStorage(() => localStorage),
     },
