@@ -41,6 +41,7 @@ export function StudioPage() {
   const [selectionRevision, setSelectionRevision] = useState(0);
   const createdProjectRef = useRef(false);
   const lastLoadedDocumentRef = useRef<string | null>(null);
+  const handleSaveRef = useRef<() => void>(() => {});
   const handleSelectionChange = useCallback(
     (object: FabricObject | null, selectedCount: number) => {
       setSelectedObject(object);
@@ -70,6 +71,7 @@ export function StudioPage() {
     zoomBy,
   } = useStudioCanvas({
     activeTool,
+    onSave: () => handleSaveRef.current(),
     onSelectionChange: handleSelectionChange,
   });
   const currentProject = projects.find((project) => project.id === projectId);
@@ -154,6 +156,10 @@ export function StudioPage() {
     toast.success("Project saved locally");
   }, [currentProject, getCanvasJson, projectId, saveStudioDocument, savedDocument?.world]);
 
+  useEffect(() => {
+    handleSaveRef.current = handleSave;
+  }, [handleSave]);
+
   const handleExportPng = useCallback(() => {
     if (!currentProject) {
       return;
@@ -223,7 +229,7 @@ export function StudioPage() {
   }, [deleteSelected]);
 
   const handleInspectorUpdate = useCallback(
-    (property: InspectorProperty, value: number) => {
+    (property: InspectorProperty, value: number | string | boolean) => {
       if (!selectedObject) {
         return;
       }
@@ -304,6 +310,7 @@ export function StudioPage() {
         <InspectorPanel
           object={selectedObject}
           onCommit={commitHistory}
+          onDelete={handleDelete}
           onUpdate={handleInspectorUpdate}
           revision={selectionRevision}
         />

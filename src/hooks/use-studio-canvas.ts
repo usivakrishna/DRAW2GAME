@@ -3,11 +3,14 @@ import {
   Canvas,
   Circle,
   FabricObject,
+  FabricText,
   Group,
+  IText,
   Line,
   PencilBrush,
   Point,
   Rect,
+  Text,
   Triangle,
   type TMat2D,
   type TPointerEvent,
@@ -46,21 +49,33 @@ interface DrawingSession {
   tool: ShapeTool;
 }
 
-export type InspectorProperty = "angle" | "height" | "left" | "scaleX" | "scaleY" | "top" | "width";
+export type InspectorProperty =
+  | "angle"
+  | "color"
+  | "height"
+  | "isLocked"
+  | "left"
+  | "scaleX"
+  | "scaleY"
+  | "top"
+  | "width";
 
 export interface InspectorValues {
   angle: number;
+  color: string;
   height: number;
+  isLocked: boolean;
+  left: number;
   scaleX: number;
   scaleY: number;
   top: number;
   type: StudioObjectType | string;
   width: number;
-  left: number;
 }
 
 interface UseStudioCanvasOptions {
   activeTool: StudioTool;
+  onSave?: () => void;
   onSelectionChange?: (object: FabricObject | null, selectedCount: number) => void;
 }
 
@@ -133,7 +148,17 @@ function assignMetadata(object: FabricObject, type: StudioObjectType) {
 }
 
 function registerCustomProperties() {
-  const fabricClasses = [FabricObject, Group, Rect, Circle, Line, Triangle];
+  const fabricClasses = [
+    FabricObject,
+    Group,
+    Rect,
+    Circle,
+    Line,
+    Triangle,
+    FabricText,
+    Text,
+    IText,
+  ];
 
   fabricClasses.forEach((fabricClass) => {
     if (!fabricClass.customProperties.includes(CUSTOM_PROPERTY)) {
@@ -222,9 +247,18 @@ function createGoalObject(point: Point) {
     radius: 5,
     top: -40,
   });
+  const label = new FabricText("GOAL", {
+    fill: "#ffffff",
+    fontSize: 8,
+    fontWeight: "bold",
+    left: 2,
+    originX: "center",
+    originY: "center",
+    top: -24,
+  });
 
   return assignMetadata(
-    new Group([pole, flag, marker], {
+    new Group([pole, flag, marker, label], {
       left: point.x,
       originX: "center",
       originY: "center",
@@ -235,79 +269,148 @@ function createGoalObject(point: Point) {
 }
 
 function createGameObject(type: GameObjectType, point: Point) {
-  const sharedOptions = {
-    left: point.x,
-    originX: "center" as const,
-    originY: "center" as const,
-    top: point.y,
-  };
-
   switch (type) {
-    case "player":
+    case "player": {
+      const shape = new Rect({
+        fill: "#2563eb",
+        height: 52,
+        originX: "center",
+        originY: "center",
+        rx: 8,
+        ry: 8,
+        stroke: "#1d4ed8",
+        strokeWidth: 2,
+        width: 38,
+      });
+      const label = new FabricText("P1", {
+        fill: "#ffffff",
+        fontSize: 12,
+        fontWeight: "bold",
+        originX: "center",
+        originY: "center",
+      });
       return assignMetadata(
-        new Rect({
-          ...sharedOptions,
-          fill: "#2563eb",
-          height: 48,
-          rx: 9,
-          ry: 9,
-          stroke: "#1d4ed8",
-          strokeWidth: 2,
-          width: 36,
+        new Group([shape, label], {
+          left: point.x,
+          originX: "center",
+          originY: "center",
+          top: point.y,
         }),
         type,
       );
-    case "platform":
+    }
+    case "platform": {
+      const shape = new Rect({
+        fill: "#10b981",
+        height: 32,
+        originX: "center",
+        originY: "center",
+        rx: 6,
+        ry: 6,
+        stroke: "#047857",
+        strokeWidth: 2,
+        width: 184,
+      });
+      const label = new FabricText("PLATFORM", {
+        fill: "#ffffff",
+        fontSize: 11,
+        fontWeight: "bold",
+        originX: "center",
+        originY: "center",
+      });
       return assignMetadata(
-        new Rect({
-          ...sharedOptions,
-          fill: "#10b981",
-          height: 32,
-          rx: 8,
-          ry: 8,
-          stroke: "#047857",
-          strokeWidth: 2,
-          width: 184,
+        new Group([shape, label], {
+          left: point.x,
+          originX: "center",
+          originY: "center",
+          top: point.y,
         }),
         type,
       );
-    case "enemy":
+    }
+    case "enemy": {
+      const shape = new Rect({
+        fill: "#ef4444",
+        height: 44,
+        originX: "center",
+        originY: "center",
+        rx: 8,
+        ry: 8,
+        stroke: "#b91c1c",
+        strokeWidth: 2,
+        width: 44,
+      });
+      const label = new FabricText("ENEMY", {
+        fill: "#ffffff",
+        fontSize: 10,
+        fontWeight: "bold",
+        originX: "center",
+        originY: "center",
+      });
       return assignMetadata(
-        new Rect({
-          ...sharedOptions,
-          fill: "#ef4444",
-          height: 42,
-          rx: 10,
-          ry: 10,
-          stroke: "#b91c1c",
-          strokeWidth: 2,
-          width: 42,
+        new Group([shape, label], {
+          left: point.x,
+          originX: "center",
+          originY: "center",
+          top: point.y,
         }),
         type,
       );
-    case "coin":
+    }
+    case "coin": {
+      const shape = new Circle({
+        fill: "#fbbf24",
+        originX: "center",
+        originY: "center",
+        radius: 18,
+        stroke: "#d97706",
+        strokeWidth: 3,
+      });
+      const label = new FabricText("★", {
+        fill: "#78350f",
+        fontSize: 14,
+        fontWeight: "bold",
+        originX: "center",
+        originY: "center",
+      });
       return assignMetadata(
-        new Circle({
-          ...sharedOptions,
-          fill: "#fbbf24",
-          radius: 16,
-          stroke: "#d97706",
-          strokeWidth: 3,
+        new Group([shape, label], {
+          left: point.x,
+          originX: "center",
+          originY: "center",
+          top: point.y,
         }),
         type,
       );
-    case "spike":
+    }
+    case "spike": {
+      const shape = new Triangle({
+        fill: "#475569",
+        height: 32,
+        originX: "center",
+        originY: "center",
+        stroke: "#1e293b",
+        strokeWidth: 2,
+        width: 38,
+      });
+      const label = new FabricText("▲", {
+        fill: "#ffffff",
+        fontSize: 10,
+        fontWeight: "bold",
+        originX: "center",
+        originY: "center",
+        top: 4,
+      });
       return assignMetadata(
-        new Triangle({
-          ...sharedOptions,
-          fill: "#475569",
-          height: 30,
-          stroke: "#1e293b",
-          strokeWidth: 2,
-          width: 38,
+        new Group([shape, label], {
+          left: point.x,
+          originX: "center",
+          originY: "center",
+          top: point.y,
         }),
         type,
       );
+    }
     case "goal":
       return createGoalObject(point);
   }
@@ -336,19 +439,38 @@ function applyToolToCanvas(canvas: Canvas, tool: StudioTool) {
 }
 
 export function getInspectorValues(object: FabricObject): InspectorValues {
+  let color = "#2563eb";
+
+  if (object instanceof Group) {
+    const firstShape = object.getObjects()[0];
+    if (firstShape) {
+      color =
+        (firstShape.get("fill") as string) ||
+        (firstShape.get("stroke") as string) ||
+        "#2563eb";
+    }
+  } else {
+    color =
+      (object.get("fill") as string) ||
+      (object.get("stroke") as string) ||
+      "#2563eb";
+  }
+
   return {
-    angle: object.angle ?? 0,
-    height: object.getScaledHeight(),
-    left: object.left ?? 0,
-    scaleX: object.scaleX ?? 1,
-    scaleY: object.scaleY ?? 1,
-    top: object.top ?? 0,
+    angle: Math.round(object.angle ?? 0),
+    color,
+    height: Math.round(object.getScaledHeight()),
+    isLocked: Boolean(object.lockMovementX),
+    left: Math.round(object.left ?? 0),
+    scaleX: Number((object.scaleX ?? 1).toFixed(2)),
+    scaleY: Number((object.scaleY ?? 1).toFixed(2)),
+    top: Math.round(object.top ?? 0),
     type: getObjectType(object),
-    width: object.getScaledWidth(),
+    width: Math.round(object.getScaledWidth()),
   };
 }
 
-export function useStudioCanvas({ activeTool, onSelectionChange }: UseStudioCanvasOptions) {
+export function useStudioCanvas({ activeTool, onSave, onSelectionChange }: UseStudioCanvasOptions) {
   const canvasContainerRef = useRef<HTMLDivElement>(null);
   const canvasElementRef = useRef<HTMLCanvasElement>(null);
   const canvasRef = useRef<Canvas | null>(null);
@@ -358,6 +480,7 @@ export function useStudioCanvas({ activeTool, onSelectionChange }: UseStudioCanv
   const isRestoringRef = useRef(false);
   const lastPanPointRef = useRef<{ x: number; y: number } | null>(null);
   const onSelectionChangeRef = useRef(onSelectionChange);
+  const onSaveRef = useRef(onSave);
   const spacePressedRef = useRef(false);
   const activeToolRef = useRef(activeTool);
   const [canvas, setCanvas] = useState<Canvas | null>(null);
@@ -380,6 +503,10 @@ export function useStudioCanvas({ activeTool, onSelectionChange }: UseStudioCanv
   useEffect(() => {
     onSelectionChangeRef.current = onSelectionChange;
   }, [onSelectionChange]);
+
+  useEffect(() => {
+    onSaveRef.current = onSave;
+  }, [onSave]);
 
   const syncHistoryState = useCallback(() => {
     setHistoryState({
@@ -448,6 +575,58 @@ export function useStudioCanvas({ activeTool, onSelectionChange }: UseStudioCanv
     },
     [notifySelection],
   );
+
+  const deleteSelected = useCallback(() => {
+    const fabricCanvas = canvasRef.current;
+    const activeObjects = fabricCanvas?.getActiveObjects() ?? [];
+
+    if (!fabricCanvas || activeObjects.length === 0) {
+      return false;
+    }
+
+    activeObjects.forEach((object) => {
+      fabricCanvas.remove(object);
+    });
+    fabricCanvas.discardActiveObject();
+    fabricCanvas.requestRenderAll();
+    commitHistory();
+    notifySelection();
+    return true;
+  }, [commitHistory, notifySelection]);
+
+  const undo = useCallback(async () => {
+    const currentHistory = historyRef.current;
+    const currentSnapshot = currentHistory.undo.at(-1);
+    const previousSnapshot = currentHistory.undo.at(-2);
+
+    if (!currentSnapshot || !previousSnapshot) {
+      return;
+    }
+
+    historyRef.current = {
+      redo: [currentSnapshot, ...currentHistory.redo],
+      undo: currentHistory.undo.slice(0, -1),
+    };
+    syncHistoryState();
+    await restoreSnapshot(previousSnapshot);
+  }, [restoreSnapshot, syncHistoryState]);
+
+  const redo = useCallback(async () => {
+    const currentHistory = historyRef.current;
+    const nextSnapshot = currentHistory.redo[0];
+    const currentSnapshot = currentHistory.undo.at(-1);
+
+    if (!nextSnapshot || !currentSnapshot) {
+      return;
+    }
+
+    historyRef.current = {
+      redo: currentHistory.redo.slice(1),
+      undo: [...currentHistory.undo, nextSnapshot],
+    };
+    syncHistoryState();
+    await restoreSnapshot(nextSnapshot);
+  }, [restoreSnapshot, syncHistoryState]);
 
   useEffect(() => {
     const canvasElement = canvasElementRef.current;
@@ -568,6 +747,15 @@ export function useStudioCanvas({ activeTool, onSelectionChange }: UseStudioCanv
         return;
       }
 
+      if (activeToolRef.current === "eraser" && event.target && "buttons" in event.e && event.e.buttons === 1) {
+        fabricCanvas.remove(event.target);
+        fabricCanvas.discardActiveObject();
+        fabricCanvas.requestRenderAll();
+        commitHistory();
+        notifySelection();
+        return;
+      }
+
       const drawingSession = drawingSessionRef.current;
 
       if (!drawingSession) {
@@ -618,6 +806,30 @@ export function useStudioCanvas({ activeTool, onSelectionChange }: UseStudioCanv
         return;
       }
 
+      const { object, tool } = drawingSession;
+
+      if (tool === "rectangle" && object instanceof Rect) {
+        if (object.width < 5 || object.height < 5) {
+          object.set({
+            height: 70,
+            width: 120,
+          });
+        }
+      } else if (tool === "circle" && object instanceof Circle) {
+        if (object.radius < 3) {
+          object.set({
+            radius: 35,
+          });
+        }
+      } else if (tool === "line" && object instanceof Line) {
+        if (Math.abs(object.x2 - object.x1) < 5 && Math.abs(object.y2 - object.y1) < 5) {
+          object.set({
+            x2: object.x1 + 120,
+            y2: object.y1,
+          });
+        }
+      }
+
       drawingSession.object.setCoords();
       drawingSessionRef.current = null;
       fabricCanvas.requestRenderAll();
@@ -635,19 +847,53 @@ export function useStudioCanvas({ activeTool, onSelectionChange }: UseStudioCanv
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.code !== "Space" || isEditableElement(event.target)) {
+      if (isEditableElement(event.target)) {
         return;
       }
 
-      spacePressedRef.current = true;
+      if (event.code === "Space") {
+        spacePressedRef.current = true;
+        event.preventDefault();
+        return;
+      }
+
+      const isMetaOrCtrl = event.metaKey || event.ctrlKey;
+
+      if (isMetaOrCtrl && event.key.toLowerCase() === "z") {
+        event.preventDefault();
+        if (event.shiftKey) {
+          void redo();
+        } else {
+          void undo();
+        }
+        return;
+      }
+
+      if (isMetaOrCtrl && event.key.toLowerCase() === "y") {
+        event.preventDefault();
+        void redo();
+        return;
+      }
+
+      if (isMetaOrCtrl && event.key.toLowerCase() === "s") {
+        event.preventDefault();
+        onSaveRef.current?.();
+        return;
+      }
+
+      if (event.key === "Delete" || event.key === "Backspace") {
+        const currentFabricCanvas = canvasRef.current;
+        if (currentFabricCanvas && currentFabricCanvas.getActiveObjects().length > 0) {
+          event.preventDefault();
+          deleteSelected();
+        }
+      }
     };
 
     const handleKeyUp = (event: KeyboardEvent) => {
-      if (event.code !== "Space") {
-        return;
+      if (event.code === "Space") {
+        spacePressedRef.current = false;
       }
-
-      spacePressedRef.current = false;
     };
 
     const handleBlur = () => {
@@ -702,7 +948,7 @@ export function useStudioCanvas({ activeTool, onSelectionChange }: UseStudioCanv
 
       void fabricCanvas.dispose();
     };
-  }, [commitHistory, notifySelection, syncHistoryState]);
+  }, [commitHistory, deleteSelected, notifySelection, redo, syncHistoryState, undo]);
 
   const clearCanvas = useCallback(() => {
     const fabricCanvas = canvasRef.current;
@@ -714,24 +960,6 @@ export function useStudioCanvas({ activeTool, onSelectionChange }: UseStudioCanv
     fabricCanvas.clear();
     fabricCanvas.backgroundColor = "transparent";
     applyToolToCanvas(fabricCanvas, activeToolRef.current);
-    fabricCanvas.requestRenderAll();
-    commitHistory();
-    notifySelection();
-    return true;
-  }, [commitHistory, notifySelection]);
-
-  const deleteSelected = useCallback(() => {
-    const fabricCanvas = canvasRef.current;
-    const activeObjects = fabricCanvas?.getActiveObjects() ?? [];
-
-    if (!fabricCanvas || activeObjects.length === 0) {
-      return false;
-    }
-
-    activeObjects.forEach((object) => {
-      fabricCanvas.remove(object);
-    });
-    fabricCanvas.discardActiveObject();
     fabricCanvas.requestRenderAll();
     commitHistory();
     notifySelection();
@@ -805,23 +1033,6 @@ export function useStudioCanvas({ activeTool, onSelectionChange }: UseStudioCanv
     [notifySelection, syncHistoryState],
   );
 
-  const redo = useCallback(async () => {
-    const currentHistory = historyRef.current;
-    const nextSnapshot = currentHistory.redo[0];
-    const currentSnapshot = currentHistory.undo.at(-1);
-
-    if (!nextSnapshot || !currentSnapshot) {
-      return;
-    }
-
-    historyRef.current = {
-      redo: currentHistory.redo.slice(1),
-      undo: [...currentHistory.undo, nextSnapshot],
-    };
-    syncHistoryState();
-    await restoreSnapshot(nextSnapshot);
-  }, [restoreSnapshot, syncHistoryState]);
-
   const resetCanvas = useCallback(() => {
     const fabricCanvas = canvasRef.current;
 
@@ -861,50 +1072,59 @@ export function useStudioCanvas({ activeTool, onSelectionChange }: UseStudioCanv
     setZoom(1);
   }, []);
 
-  const undo = useCallback(async () => {
-    const currentHistory = historyRef.current;
-    const currentSnapshot = currentHistory.undo.at(-1);
-    const previousSnapshot = currentHistory.undo.at(-2);
-
-    if (!currentSnapshot || !previousSnapshot) {
-      return;
-    }
-
-    historyRef.current = {
-      redo: [currentSnapshot, ...currentHistory.redo],
-      undo: currentHistory.undo.slice(0, -1),
-    };
-    syncHistoryState();
-    await restoreSnapshot(previousSnapshot);
-  }, [restoreSnapshot, syncHistoryState]);
-
   const updateObject = useCallback(
-    (object: FabricObject, property: InspectorProperty, value: number) => {
-      const safeValue = Number.isFinite(value) ? value : 0;
-
-      if (property === "width") {
+    (
+      object: FabricObject,
+      property: InspectorProperty,
+      value: number | string | boolean,
+    ) => {
+      if (property === "isLocked") {
+        const locked = Boolean(value);
         object.set({
-          scaleX: Math.max(safeValue / Math.max(object.width ?? 1, 1), 0.05),
+          lockMovementX: locked,
+          lockMovementY: locked,
+          lockRotation: locked,
+          lockScalingX: locked,
+          lockScalingY: locked,
         });
-      } else if (property === "height") {
-        object.set({
-          scaleY: Math.max(safeValue / Math.max(object.height ?? 1, 1), 0.05),
-        });
-      } else if (property === "scaleX" || property === "scaleY") {
-        object.set({
-          [property]: Math.max(safeValue, 0.05),
-        });
-      } else {
-        object.set({
-          [property]: safeValue,
-        });
+      } else if (property === "color" && typeof value === "string") {
+        if (object instanceof Group) {
+          const firstShape = object.getObjects()[0];
+          if (firstShape) {
+            firstShape.set("fill", value);
+          }
+        } else {
+          object.set("fill", value);
+        }
+      } else if (typeof value === "number") {
+        const safeValue = Number.isFinite(value) ? value : 0;
+        if (property === "width") {
+          const baseWidth = Math.max(object.width ?? 1, 1);
+          object.set({
+            scaleX: Math.max(safeValue / baseWidth, 0.05),
+          });
+        } else if (property === "height") {
+          const baseHeight = Math.max(object.height ?? 1, 1);
+          object.set({
+            scaleY: Math.max(safeValue / baseHeight, 0.05),
+          });
+        } else if (property === "scaleX" || property === "scaleY") {
+          object.set({
+            [property]: Math.max(safeValue, 0.05),
+          });
+        } else {
+          object.set({
+            [property]: safeValue,
+          });
+        }
       }
 
       object.setCoords();
       canvasRef.current?.requestRenderAll();
+      commitHistory();
       notifySelection();
     },
-    [notifySelection],
+    [commitHistory, notifySelection],
   );
 
   const zoomBy = useCallback((delta: number) => {

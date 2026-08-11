@@ -1,5 +1,5 @@
-import type { RefObject } from "react";
-import { RotateCcw, ZoomIn, ZoomOut } from "lucide-react";
+import { useState, type RefObject } from "react";
+import { Grid3X3, RotateCcw, ZoomIn, ZoomOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface StudioCanvasProps {
@@ -19,24 +19,40 @@ export function StudioCanvas({
   onZoomOut,
   zoom,
 }: StudioCanvasProps) {
+  const [showGrid, setShowGrid] = useState(true);
+
   return (
     <section aria-label="Drawing canvas" className="min-h-[480px] min-w-0 bg-slate-100 p-3 sm:p-4">
       <div
         className="studio-fabric-canvas relative h-full min-h-[450px] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
         ref={canvasContainerRef}
       >
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 z-0 opacity-70"
-          style={{
-            backgroundImage:
-              "linear-gradient(to right, rgba(148, 163, 184, 0.18) 1px, transparent 1px), linear-gradient(to bottom, rgba(148, 163, 184, 0.18) 1px, transparent 1px)",
-            backgroundSize: "24px 24px",
-          }}
-        />
+        {showGrid && (
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 z-0 opacity-70"
+            style={{
+              backgroundImage:
+                "linear-gradient(to right, rgba(148, 163, 184, 0.18) 1px, transparent 1px), linear-gradient(to bottom, rgba(148, 163, 184, 0.18) 1px, transparent 1px)",
+              backgroundSize: "24px 24px",
+            }}
+          />
+        )}
         <canvas className="relative z-10 block" ref={canvasElementRef} />
 
         <div className="absolute right-3 bottom-3 z-20 flex items-center gap-1 rounded-lg border border-slate-200 bg-white/95 p-1 shadow-sm backdrop-blur">
+          <Button
+            aria-label={showGrid ? "Hide grid background" : "Show grid background"}
+            aria-pressed={showGrid}
+            className={showGrid ? "bg-slate-100 text-slate-900" : ""}
+            onClick={() => setShowGrid((prev) => !prev)}
+            size="icon"
+            title={showGrid ? "Hide grid" : "Show grid"}
+            variant="ghost"
+          >
+            <Grid3X3 aria-hidden="true" className="size-4" />
+          </Button>
+          <div className="h-4 w-px bg-slate-200" />
           <Button
             aria-label="Zoom out"
             onClick={onZoomOut}
