@@ -5,12 +5,10 @@ import {
   FabricObject,
   FabricText,
   Group,
-  IText,
   Line,
   PencilBrush,
   Point,
   Rect,
-  Text,
   Triangle,
   type TMat2D,
   type TPointerEvent,
@@ -156,8 +154,6 @@ function registerCustomProperties() {
     Line,
     Triangle,
     FabricText,
-    Text,
-    IText,
   ];
 
   fabricClasses.forEach((fabricClass) => {
@@ -483,6 +479,10 @@ export function useStudioCanvas({ activeTool, onSave, onSelectionChange }: UseSt
   const onSaveRef = useRef(onSave);
   const spacePressedRef = useRef(false);
   const activeToolRef = useRef(activeTool);
+  // Refs for callbacks used inside the canvas-init effect (keeps effect deps empty)
+  const deleteSelectedRef = useRef<() => boolean>(() => false);
+  const undoRef = useRef<() => Promise<void>>(() => Promise.resolve());
+  const redoRef = useRef<() => Promise<void>>(() => Promise.resolve());
   const [canvas, setCanvas] = useState<Canvas | null>(null);
   const [historyState, setHistoryState] = useState({
     canRedo: false,
@@ -627,6 +627,20 @@ export function useStudioCanvas({ activeTool, onSave, onSelectionChange }: UseSt
     syncHistoryState();
     await restoreSnapshot(nextSnapshot);
   }, [restoreSnapshot, syncHistoryState]);
+
+  // Keep action refs in-sync so the canvas-init effect (with empty deps) always
+  // calls the latest version of these callbacks.
+  useEffect(() => {
+    deleteSelectedRef.current = deleteSelected;
+  }, [deleteSelected]);
+
+  useEffect(() => {
+    undoRef.current = undo;
+  }, [undo]);
+
+  useEffect(() => {
+    redoRef.current = redo;
+  }, [redo]);
 
   useEffect(() => {
     const canvasElement = canvasElementRef.current;
@@ -862,16 +876,16 @@ export function useStudioCanvas({ activeTool, onSave, onSelectionChange }: UseSt
       if (isMetaOrCtrl && event.key.toLowerCase() === "z") {
         event.preventDefault();
         if (event.shiftKey) {
-          void redo();
+          void redoRef.current();
         } else {
-          void undo();
+          void undoRef.current();
         }
         return;
       }
 
       if (isMetaOrCtrl && event.key.toLowerCase() === "y") {
         event.preventDefault();
-        void redo();
+        void redoRef.current();
         return;
       }
 
@@ -885,7 +899,7 @@ export function useStudioCanvas({ activeTool, onSave, onSelectionChange }: UseSt
         const currentFabricCanvas = canvasRef.current;
         if (currentFabricCanvas && currentFabricCanvas.getActiveObjects().length > 0) {
           event.preventDefault();
-          deleteSelected();
+          deleteSelectedRef.current();
         }
       }
     };
@@ -948,7 +962,8 @@ export function useStudioCanvas({ activeTool, onSave, onSelectionChange }: UseSt
 
       void fabricCanvas.dispose();
     };
-  }, [commitHistory, deleteSelected, notifySelection, redo, syncHistoryState, undo]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);  // Empty deps: canvas must only be initialized once. Callbacks are accessed via refs.
 
   const clearCanvas = useCallback(() => {
     const fabricCanvas = canvasRef.current;

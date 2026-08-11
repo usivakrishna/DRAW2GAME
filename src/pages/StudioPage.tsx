@@ -276,7 +276,7 @@ export function StudioPage() {
   const canAct = Boolean(canvas);
 
   return (
-    <div className="flex min-h-[calc(100svh-4rem)] flex-col bg-slate-50">
+    <div className="flex h-[calc(100svh-4rem)] flex-col overflow-hidden bg-slate-50">
       <StudioHeader
         canAct={canAct}
         onClear={handleClear}
@@ -288,7 +288,7 @@ export function StudioPage() {
         projectName={currentProject.name}
       />
 
-      <div className="grid flex-1 grid-cols-1 lg:min-h-0 lg:grid-cols-[10rem_minmax(0,1fr)_19rem]">
+      <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden lg:grid-cols-[10rem_minmax(0,1fr)_19rem]">
         <StudioToolbar
           activeTool={activeTool}
           canDelete={selectedObjectCount > 0}
