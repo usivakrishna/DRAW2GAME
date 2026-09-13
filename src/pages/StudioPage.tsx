@@ -40,7 +40,7 @@ export function StudioPage() {
   const [selectedObjectCount, setSelectedObjectCount] = useState(0);
   const [selectionRevision, setSelectionRevision] = useState(0);
   const createdProjectRef = useRef(false);
-  const lastLoadedDocumentRef = useRef<string | null>(null);
+  const activeProjectIdRef = useRef<string | null>(null);
   const handleSaveRef = useRef<() => void>(() => {});
   const handleSelectionChange = useCallback(
     (object: FabricObject | null, selectedCount: number) => {
@@ -77,6 +77,31 @@ export function StudioPage() {
   const currentProject = projects.find((project) => project.id === projectId);
   const savedDocument = projectId ? studioDocuments[projectId] : undefined;
 
+  const persistProjectCanvas = useCallback(
+    (targetProjectId?: string) => {
+      const idToSave = targetProjectId ?? projectId;
+      if (!idToSave || !canvas) {
+        return;
+      }
+
+      const canvasJson = getCanvasJson();
+      if (!canvasJson) {
+        return;
+      }
+
+      const currentDoc = useProjectStore.getState().studioDocuments[idToSave];
+      const savedAt = new Date().toISOString();
+
+      saveStudioDocument(idToSave, {
+        canvasJson,
+        savedAt,
+        version: 1,
+        world: currentDoc?.world ?? DEFAULT_STUDIO_WORLD,
+      });
+    },
+    [canvas, getCanvasJson, projectId, saveStudioDocument],
+  );
+
   useEffect(() => {
     if (projectId) {
       setActiveProject(projectId);
@@ -97,24 +122,37 @@ export function StudioPage() {
       return;
     }
 
-    const documentKey = projectId + ":" + (savedDocument?.savedAt ?? "new");
-
-    if (lastLoadedDocumentRef.current === documentKey) {
+    if (activeProjectIdRef.current === projectId) {
       return;
     }
 
+    const previousProjectId = activeProjectIdRef.current;
+
+    // If leaving a previous project, persist its current canvas state first
+    if (previousProjectId && previousProjectId !== projectId) {
+      const outgoingCanvasJson = getCanvasJson();
+      if (outgoingCanvasJson) {
+        const prevDoc = useProjectStore.getState().studioDocuments[previousProjectId];
+        saveStudioDocument(previousProjectId, {
+          canvasJson: outgoingCanvasJson,
+          savedAt: new Date().toISOString(),
+          version: 1,
+          world: prevDoc?.world ?? DEFAULT_STUDIO_WORLD,
+        });
+      }
+    }
+
+    activeProjectIdRef.current = projectId;
     let isCancelled = false;
 
     const loadProjectDocument = async () => {
       try {
-        if (savedDocument) {
-          await loadCanvasJson(savedDocument.canvasJson);
+        const targetDocument = useProjectStore.getState().studioDocuments[projectId];
+
+        if (targetDocument) {
+          await loadCanvasJson(targetDocument.canvasJson);
         } else {
           resetCanvas();
-        }
-
-        if (!isCancelled) {
-          lastLoadedDocumentRef.current = documentKey;
         }
       } catch (error) {
         if (!isCancelled) {
@@ -130,7 +168,18 @@ export function StudioPage() {
     return () => {
       isCancelled = true;
     };
-  }, [canvas, loadCanvasJson, projectId, resetCanvas, savedDocument]);
+  }, [canvas, getCanvasJson, loadCanvasJson, projectId, resetCanvas, saveStudioDocument]);
+
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      persistProjectCanvas();
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [persistProjectCanvas]);
 
   const handleSave = useCallback(() => {
     if (!projectId || !currentProject) {
@@ -146,7 +195,6 @@ export function StudioPage() {
 
     const savedAt = new Date().toISOString();
 
-    lastLoadedDocumentRef.current = projectId + ":" + savedAt;
     saveStudioDocument(projectId, {
       canvasJson,
       savedAt,
@@ -242,11 +290,24 @@ export function StudioPage() {
 
   const handleLoadProject = useCallback(
     (nextProjectId: string) => {
+      if (nextProjectId === projectId) {
+        setProjectPickerOpen(false);
+        return;
+      }
+
+      persistProjectCanvas(projectId);
       setProjectPickerOpen(false);
       navigate("/projects/" + nextProjectId + "/studio");
     },
-    [navigate],
+    [navigate, persistProjectCanvas, projectId],
   );
+
+  const handleCreateProject = useCallback(() => {
+    persistProjectCanvas(projectId);
+    const newProject = createProject("Untitled level");
+    setProjectPickerOpen(false);
+    navigate("/projects/" + newProject.id + "/studio");
+  }, [createProject, navigate, persistProjectCanvas, projectId]);
 
   if (!projectId) {
     return (
@@ -320,6 +381,7 @@ export function StudioPage() {
         currentProjectId={currentProject.id}
         isOpen={isProjectPickerOpen}
         onClose={() => setProjectPickerOpen(false)}
+        onCreateProject={handleCreateProject}
         onSelect={handleLoadProject}
         projects={projects}
       />

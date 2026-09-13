@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { FolderOpen, X } from "lucide-react";
+import { FolderOpen, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { ProjectSummary } from "@/types/project";
 
@@ -7,6 +7,7 @@ interface ProjectPickerProps {
   currentProjectId: string;
   isOpen: boolean;
   onClose: () => void;
+  onCreateProject?: () => void;
   onSelect: (projectId: string) => void;
   projects: ProjectSummary[];
 }
@@ -15,6 +16,7 @@ export function ProjectPicker({
   currentProjectId,
   isOpen,
   onClose,
+  onCreateProject,
   onSelect,
   projects,
 }: ProjectPickerProps) {
@@ -66,9 +68,21 @@ export function ProjectPicker({
               </p>
             </div>
           </div>
-          <Button aria-label="Close project picker" onClick={onClose} size="icon" variant="ghost">
-            <X aria-hidden="true" className="size-4" />
-          </Button>
+          <div className="flex items-center gap-2">
+            {onCreateProject && (
+              <Button
+                className="gap-1.5"
+                onClick={onCreateProject}
+                size="sm"
+              >
+                <Plus aria-hidden="true" className="size-4" />
+                New project
+              </Button>
+            )}
+            <Button aria-label="Close project picker" onClick={onClose} size="icon" variant="ghost">
+              <X aria-hidden="true" className="size-4" />
+            </Button>
+          </div>
         </div>
 
         <div className="mt-5 max-h-80 space-y-2 overflow-y-auto pr-1">

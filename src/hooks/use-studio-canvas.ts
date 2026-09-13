@@ -6,6 +6,7 @@ import {
   FabricText,
   Group,
   Line,
+  Path,
   PencilBrush,
   Point,
   Rect,
@@ -152,6 +153,7 @@ function registerCustomProperties() {
     Rect,
     Circle,
     Line,
+    Path,
     Triangle,
     FabricText,
   ];
@@ -164,7 +166,7 @@ function registerCustomProperties() {
 }
 
 function serializeCanvas(canvas: Canvas) {
-  return JSON.stringify(canvas.toJSON());
+  return JSON.stringify(canvas.toObject([CUSTOM_PROPERTY]));
 }
 
 function createDrawingObject(tool: ShapeTool, point: Point) {
@@ -445,6 +447,8 @@ export function getInspectorValues(object: FabricObject): InspectorValues {
         (firstShape.get("stroke") as string) ||
         "#2563eb";
     }
+  } else if (object instanceof Line || object.type === "path") {
+    color = (object.get("stroke") as string) || (object.get("fill") as string) || "#2563eb";
   } else {
     color =
       (object.get("fill") as string) ||
@@ -1031,6 +1035,10 @@ export function useStudioCanvas({ activeTool, onSave, onSelectionChange }: UseSt
         fabricCanvas.discardActiveObject();
         await fabricCanvas.loadFromJSON(parsedCanvas);
         fabricCanvas.backgroundColor = "transparent";
+        fabricCanvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
+        fabricCanvas.getObjects().forEach((object) => {
+          object.setCoords();
+        });
         applyToolToCanvas(fabricCanvas, activeToolRef.current);
         fabricCanvas.requestRenderAll();
         historyRef.current = {
@@ -1038,6 +1046,7 @@ export function useStudioCanvas({ activeTool, onSave, onSelectionChange }: UseSt
           undo: [serializeCanvas(fabricCanvas)],
         };
         syncHistoryState();
+        setZoom(1);
         notifySelection();
       } finally {
         isRestoringRef.current = false;
@@ -1110,6 +1119,9 @@ export function useStudioCanvas({ activeTool, onSave, onSelectionChange }: UseSt
           }
         } else {
           object.set("fill", value);
+          if (object instanceof Line || object.type === "path") {
+            object.set("stroke", value);
+          }
         }
       } else if (typeof value === "number") {
         const safeValue = Number.isFinite(value) ? value : 0;
