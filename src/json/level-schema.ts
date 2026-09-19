@@ -153,3 +153,40 @@ export function createEmptyLevel(
     },
   });
 }
+
+export function createPlayableDemoLevel(
+  name = "Playable Demo Level",
+  gameMode: GameMode = "single-screen",
+): LevelDefinition {
+  const base = createEmptyLevel(name, gameMode);
+  return levelSchema.parse({
+    ...base,
+    coins: [
+      { id: "coin_1", radius: 14, x: 300, y: 460 },
+      { id: "coin_2", radius: 14, x: 550, y: 360 },
+      { id: "coin_3", radius: 14, x: 750, y: 280 },
+    ],
+    enemies: [
+      { height: 36, id: "enemy_patrol", patrolDistance: 80, width: 32, x: 520, y: 384 },
+    ],
+    goal: { height: 64, id: "goal_flag", label: "Goal Flag", width: 44, x: 1100, y: 456 },
+    platforms: [
+      { height: 40, id: "ground_start", oneWay: false, width: 360, x: 60, y: 520 },
+      { height: 32, id: "plat_mid", oneWay: false, width: 220, x: 440, y: 420 },
+      { height: 32, id: "plat_high", oneWay: false, width: 200, x: 680, y: 340 },
+      { height: 40, id: "ground_end", oneWay: false, width: 320, x: 920, y: 520 },
+    ],
+    player: {
+      height: 48,
+      id: "player_start",
+      spawnFacing: "right",
+      width: 32,
+      x: 120,
+      y: 450,
+    },
+    spikes: [
+      { direction: "up", height: 20, id: "spike_hazard", width: 48, x: 410, y: 540 },
+    ],
+  });
+}
+

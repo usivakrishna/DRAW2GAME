@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Cpu, FolderOpen, Paintbrush, UploadCloud } from "lucide-react";
+import { Cpu, FolderOpen, Gamepad2, Paintbrush, UploadCloud } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import type { ProjectStage } from "@/types/project";
@@ -52,6 +52,13 @@ export function LevelHeader({
         </div>
 
         <div className="flex flex-wrap items-center justify-end gap-2">
+          <Button asChild className="bg-brand-600 text-white hover:bg-brand-500 shadow-sm" size="sm">
+            <Link to={`/projects/${currentProjectId}/play`}>
+              <Gamepad2 aria-hidden="true" className="size-4 mr-1" />
+              Play Game
+            </Link>
+          </Button>
+
           <Button onClick={onOpenProjectPicker} size="sm" variant="outline">
             <FolderOpen aria-hidden="true" className="size-4" />
             Switch Project

@@ -38,6 +38,14 @@ export const router = createBrowserRouter([
         element: <JsonEditorPage />,
       },
       {
+        path: "play",
+        element: <GamePage />,
+      },
+      {
+        path: "game",
+        element: <GamePage />,
+      },
+      {
         path: "projects/:projectId",
         element: <StudioLayout />,
         children: [
@@ -63,6 +71,10 @@ export const router = createBrowserRouter([
           },
           {
             path: "play",
+            element: <GamePage />,
+          },
+          {
+            path: "game",
             element: <GamePage />,
           },
         ],

@@ -12,6 +12,7 @@ import {
 } from "@/json/detection-to-level";
 import {
   createEmptyLevel,
+  createPlayableDemoLevel,
   type GameMode,
   type LevelDefinition,
 } from "@/json/level-schema";
@@ -36,7 +37,7 @@ export function JsonEditorPage() {
 
   const [isProjectPickerOpen, setProjectPickerOpen] = useState(false);
 
-  // 1. Auto-redirect or activate projectId
+  // 1. Auto-redirect if missing projectId
   useEffect(() => {
     if (projectId) {
       setActiveProject(projectId);
@@ -158,6 +159,14 @@ export function JsonEditorPage() {
     toast.success("Reset level definition to default schema template");
   }, [activeLevel.gameMode, currentProject, projectId, setProjectLevel]);
 
+  // Handler: Load Demo Playable Level
+  const handleLoadDemoLevel = useCallback(() => {
+    if (!projectId || !currentProject) return;
+    const demo = createPlayableDemoLevel(currentProject.name, activeLevel.gameMode);
+    setProjectLevel(projectId, demo);
+    toast.success("Loaded playable demo level with platforms, coins, and goal!");
+  }, [activeLevel.gameMode, currentProject, projectId, setProjectLevel]);
+
   // Handler: Rename Project
   const handleProjectNameChange = useCallback(
     (name: string) => {
@@ -222,6 +231,7 @@ export function JsonEditorPage() {
           >
             <LevelJsonViewer
               level={activeLevel}
+              onLoadDemoLevel={handleLoadDemoLevel}
               onRegenerate={handleRegenerate}
               onResetToTemplate={handleResetToTemplate}
               projectName={currentProject.name}

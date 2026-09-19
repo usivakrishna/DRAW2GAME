@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, Copy, Download, FileCode, RefreshCw } from "lucide-react";
+import { Check, Copy, Download, FileCode, RefreshCw, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import type { LevelDefinition } from "@/json/level-schema";
@@ -7,6 +7,7 @@ import { downloadTextFile } from "@/utils/download";
 
 interface LevelJsonViewerProps {
   level: LevelDefinition;
+  onLoadDemoLevel?: () => void;
   onRegenerate: () => void;
   onResetToTemplate: () => void;
   projectName: string;
@@ -14,6 +15,7 @@ interface LevelJsonViewerProps {
 
 export function LevelJsonViewer({
   level,
+  onLoadDemoLevel,
   onRegenerate,
   onResetToTemplate,
   projectName,
@@ -74,6 +76,18 @@ export function LevelJsonViewer({
           >
             Reset Template
           </Button>
+
+          {onLoadDemoLevel && (
+            <Button
+              className="h-8 gap-1.5 text-xs text-amber-300 hover:text-amber-200 hover:bg-slate-800 font-medium"
+              onClick={onLoadDemoLevel}
+              size="sm"
+              variant="ghost"
+            >
+              <Sparkles className="size-3.5 text-amber-400" />
+              Demo Level
+            </Button>
+          )}
 
           <Button
             className="h-8 gap-1.5 text-xs text-slate-300 hover:text-white hover:bg-slate-800"
