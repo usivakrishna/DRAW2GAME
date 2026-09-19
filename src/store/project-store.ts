@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
+import type { DetectionPrediction } from "@/types/detection";
 import type { ProjectStage, ProjectSummary } from "@/types/project";
 import type { StudioDocument } from "@/types/studio";
 import type { UploadedImageMetadata } from "@/types/upload";
@@ -8,7 +9,9 @@ import { deleteProjectImageBlob } from "@/utils/image-storage";
 
 interface ProjectStore {
   activeProjectId: string | null;
+  clearProjectDetections: (projectId: string) => void;
   createProject: (name: string) => ProjectSummary;
+  projectDetections: Record<string, DetectionPrediction[]>;
   projects: ProjectSummary[];
   projectUploads: Record<string, UploadedImageMetadata>;
   removeProject: (projectId: string) => void;
@@ -16,6 +19,7 @@ interface ProjectStore {
   renameProject: (projectId: string, name: string) => void;
   saveStudioDocument: (projectId: string, document: StudioDocument) => void;
   setActiveProject: (projectId: string | null) => void;
+  setProjectDetections: (projectId: string, detections: DetectionPrediction[]) => void;
   setProjectStage: (projectId: string, stage: ProjectStage) => void;
   setProjectUpload: (projectId: string, metadata: UploadedImageMetadata) => void;
   studioDocuments: Record<string, StudioDocument>;
@@ -29,9 +33,27 @@ export const useProjectStore = create<ProjectStore>()(
   persist(
     (set) => ({
       activeProjectId: null,
+      projectDetections: {},
       projects: [],
       projectUploads: {},
       studioDocuments: {},
+      clearProjectDetections: (projectId) => {
+        const timestamp = new Date().toISOString();
+        set((state) => ({
+          projectDetections: Object.fromEntries(
+            Object.entries(state.projectDetections).filter(([id]) => id !== projectId),
+          ),
+          projects: state.projects.map((project) =>
+            project.id === projectId
+              ? {
+                  ...project,
+                  stage: state.projectUploads[projectId] ? ("uploaded" as const) : ("draft" as const),
+                  updatedAt: timestamp,
+                }
+              : project,
+          ),
+        }));
+      },
       createProject: (name) => {
         const timestamp = new Date().toISOString();
         const project: ProjectSummary = {
@@ -53,6 +75,9 @@ export const useProjectStore = create<ProjectStore>()(
         void deleteProjectImageBlob(projectId);
         set((state) => ({
           activeProjectId: state.activeProjectId === projectId ? null : state.activeProjectId,
+          projectDetections: Object.fromEntries(
+            Object.entries(state.projectDetections).filter(([id]) => id !== projectId),
+          ),
           projects: state.projects.filter((project) => project.id !== projectId),
           projectUploads: Object.fromEntries(
             Object.entries(state.projectUploads).filter(([id]) => id !== projectId),
@@ -116,6 +141,24 @@ export const useProjectStore = create<ProjectStore>()(
       setActiveProject: (projectId) => {
         set({ activeProjectId: projectId });
       },
+      setProjectDetections: (projectId, detections) => {
+        const timestamp = new Date().toISOString();
+        set((state) => ({
+          projectDetections: {
+            ...state.projectDetections,
+            [projectId]: detections,
+          },
+          projects: state.projects.map((project) =>
+            project.id === projectId
+              ? {
+                  ...project,
+                  stage: "detected" as const,
+                  updatedAt: timestamp,
+                }
+              : project,
+          ),
+        }));
+      },
       setProjectStage: (projectId, stage) => {
         const timestamp = new Date().toISOString();
 
@@ -153,6 +196,7 @@ export const useProjectStore = create<ProjectStore>()(
       name: "draw2game-projects",
       partialize: (state) => ({
         activeProjectId: state.activeProjectId,
+        projectDetections: state.projectDetections,
         projects: state.projects,
         projectUploads: state.projectUploads,
         studioDocuments: state.studioDocuments,

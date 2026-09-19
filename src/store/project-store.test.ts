@@ -6,6 +6,7 @@ describe("useProjectStore", () => {
   beforeEach(() => {
     useProjectStore.setState({
       activeProjectId: null,
+      projectDetections: {},
       projects: [],
       projectUploads: {},
       studioDocuments: {},
@@ -292,6 +293,144 @@ describe("useProjectStore", () => {
       store.removeProject(project.id);
 
       expect(useProjectStore.getState().projectUploads[project.id]).toBeUndefined();
+      expect(useProjectStore.getState().projects).toHaveLength(0);
+    });
+  });
+
+  describe("detection state and project isolation", () => {
+    it("stores and retrieves detection predictions and updates project stage to detected", () => {
+      const store = useProjectStore.getState();
+      const project = store.createProject("Detection Test");
+
+      const predictions = [
+        {
+          boundingBox: { height: 60, width: 40, x: 100, y: 200 },
+          className: "player" as const,
+          confidence: 0.94,
+          id: "pred-1",
+        },
+        {
+          boundingBox: { height: 20, width: 200, x: 50, y: 350 },
+          className: "platform" as const,
+          confidence: 0.91,
+          id: "pred-2",
+        },
+      ];
+
+      store.setProjectDetections(project.id, predictions);
+
+      const retrieved = useProjectStore.getState().projectDetections[project.id];
+      expect(retrieved).toEqual(predictions);
+
+      const updatedProject = useProjectStore
+        .getState()
+        .projects.find((p) => p.id === project.id);
+      expect(updatedProject?.stage).toBe("detected");
+    });
+
+    it("maintains strict detection isolation between Project A and Project B", () => {
+      const store = useProjectStore.getState();
+      const projectA = store.createProject("Project A");
+      const projectB = store.createProject("Project B");
+
+      const detectionsA = [
+        {
+          boundingBox: { height: 50, width: 50, x: 10, y: 20 },
+          className: "player" as const,
+          confidence: 0.95,
+          id: "a-1",
+        },
+      ];
+
+      const detectionsB = [
+        {
+          boundingBox: { height: 30, width: 30, x: 300, y: 150 },
+          className: "coin" as const,
+          confidence: 0.88,
+          id: "b-1",
+        },
+        {
+          boundingBox: { height: 40, width: 40, x: 400, y: 200 },
+          className: "enemy" as const,
+          confidence: 0.82,
+          id: "b-2",
+        },
+      ];
+
+      store.setProjectDetections(projectA.id, detectionsA);
+      store.setProjectDetections(projectB.id, detectionsB);
+
+      const storeState = useProjectStore.getState();
+      expect(storeState.projectDetections[projectA.id]).toEqual(detectionsA);
+      expect(storeState.projectDetections[projectB.id]).toEqual(detectionsB);
+      expect(storeState.projectDetections[projectA.id]).toHaveLength(1);
+      expect(storeState.projectDetections[projectB.id]).toHaveLength(2);
+    });
+
+    it("clearing detections resets stage to uploaded if upload exists, preserving drawings", () => {
+      const store = useProjectStore.getState();
+      const project = store.createProject("Full Project");
+
+      // Save drawing document
+      const doc = {
+        canvasJson: '{"objects":[]}',
+        savedAt: new Date().toISOString(),
+        version: 1 as const,
+        world: { height: 1440, width: 2560 },
+      };
+      store.saveStudioDocument(project.id, doc);
+
+      // Save upload
+      store.setProjectUpload(project.id, {
+        dimensions: { height: 500, width: 500 },
+        fileName: "test.png",
+        fileSize: 50000,
+        mimeType: "image/png",
+        uploadedAt: new Date().toISOString(),
+      });
+      expect(useProjectStore.getState().projects[0]?.stage).toBe("uploaded");
+
+      // Save detections
+      store.setProjectDetections(project.id, [
+        {
+          boundingBox: { height: 50, width: 50, x: 0, y: 0 },
+          className: "goal" as const,
+          confidence: 0.99,
+          id: "goal-1",
+        },
+      ]);
+      expect(useProjectStore.getState().projects[0]?.stage).toBe("detected");
+
+      // Clear detections
+      store.clearProjectDetections(project.id);
+
+      // Detections should be empty
+      expect(useProjectStore.getState().projectDetections[project.id]).toBeUndefined();
+
+      // Stage should revert to uploaded (since upload still exists)
+      expect(useProjectStore.getState().projects[0]?.stage).toBe("uploaded");
+
+      // Drawing document should remain intact
+      expect(useProjectStore.getState().studioDocuments[project.id]).toEqual(doc);
+    });
+
+    it("cleans up detection results when project is deleted", () => {
+      const store = useProjectStore.getState();
+      const project = store.createProject("To Delete Detections");
+
+      store.setProjectDetections(project.id, [
+        {
+          boundingBox: { height: 10, width: 10, x: 0, y: 0 },
+          className: "spike" as const,
+          confidence: 0.75,
+          id: "spike-1",
+        },
+      ]);
+      expect(useProjectStore.getState().projectDetections[project.id]).toBeDefined();
+
+      store.removeProject(project.id);
+
+      expect(useProjectStore.getState().projectDetections[project.id]).toBeUndefined();
       expect(useProjectStore.getState().projects).toHaveLength(0);
     });
   });

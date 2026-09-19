@@ -7,6 +7,7 @@ import {
   Sparkles,
   Trash2,
 } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import type { UploadedImageMetadata } from "@/types/upload";
 import { formatBytes } from "@/utils/upload-validation";
@@ -19,6 +20,7 @@ interface UploadPreviewProps {
   onClearError?: () => void;
   onRemove: () => void;
   onReplace: (file: File) => void;
+  projectId?: string;
 }
 
 export function UploadPreview({
@@ -29,6 +31,7 @@ export function UploadPreview({
   onClearError,
   onRemove,
   onReplace,
+  projectId,
 }: UploadPreviewProps) {
   const replaceInputRef = useRef<HTMLInputElement>(null);
 
@@ -146,15 +149,26 @@ export function UploadPreview({
           </div>
 
           <div className="flex items-center gap-2">
-            <Button
-              className="gap-2 bg-gradient-to-r from-brand-600 to-indigo-600 text-white shadow-sm opacity-80 cursor-not-allowed"
-              disabled
-              size="sm"
-              title="Detection pipeline will be implemented in Phase 4"
-            >
-              <Sparkles aria-hidden="true" className="size-4" />
-              Detect Level Elements (Phase 4)
-            </Button>
+            {projectId ? (
+              <Button
+                asChild
+                className="gap-2 bg-gradient-to-r from-brand-600 to-indigo-600 text-white shadow-sm hover:from-brand-700 hover:to-indigo-700"
+                size="sm"
+              >
+                <Link to={`/projects/${projectId}/detect`}>
+                  <Sparkles aria-hidden="true" className="size-4" />
+                  Detect Level Elements
+                </Link>
+              </Button>
+            ) : (
+              <Button
+                className="gap-2 bg-gradient-to-r from-brand-600 to-indigo-600 text-white shadow-sm"
+                size="sm"
+              >
+                <Sparkles aria-hidden="true" className="size-4" />
+                Detect Level Elements
+              </Button>
+            )}
           </div>
         </div>
       </div>

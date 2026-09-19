@@ -232,6 +232,7 @@ export function UploadPage() {
             onClearError={() => setErrorMessage(null)}
             onRemove={handleRemoveUpload}
             onReplace={handleProcessFile}
+            projectId={projectId}
           />
         ) : (
           <UploadDropzone

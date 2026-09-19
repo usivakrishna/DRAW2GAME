@@ -30,6 +30,10 @@ export const router = createBrowserRouter([
         element: <UploadPage />,
       },
       {
+        path: "detect",
+        element: <DetectionPage />,
+      },
+      {
         path: "projects/:projectId",
         element: <StudioLayout />,
         children: [
