@@ -346,6 +346,7 @@ export function StudioPage() {
         onLoad={() => setProjectPickerOpen(true)}
         onProjectNameChange={(name) => renameProject(currentProject.id, name)}
         onSave={handleSave}
+        onUpload={() => navigate(`/projects/${currentProject.id}/upload`)}
         projectName={currentProject.name}
       />
 

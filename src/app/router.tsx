@@ -26,6 +26,10 @@ export const router = createBrowserRouter([
         element: <StudioPage />,
       },
       {
+        path: "upload",
+        element: <UploadPage />,
+      },
+      {
         path: "projects/:projectId",
         element: <StudioLayout />,
         children: [

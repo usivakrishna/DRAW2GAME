@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Download, FileJson, FolderOpen, Save, Trash2 } from "lucide-react";
+import { Download, FileJson, FolderOpen, Save, Trash2, UploadCloud } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface StudioHeaderProps {
@@ -10,6 +10,7 @@ interface StudioHeaderProps {
   onLoad: () => void;
   onProjectNameChange: (name: string) => void;
   onSave: () => void;
+  onUpload?: () => void;
   projectName: string;
 }
 
@@ -21,6 +22,7 @@ export function StudioHeader({
   onLoad,
   onProjectNameChange,
   onSave,
+  onUpload,
   projectName,
 }: StudioHeaderProps) {
   const [draftName, setDraftName] = useState(projectName);
@@ -51,6 +53,12 @@ export function StudioHeader({
         </div>
 
         <div className="flex flex-wrap items-center justify-end gap-2">
+          {onUpload && (
+            <Button onClick={onUpload} size="sm" variant="outline">
+              <UploadCloud aria-hidden="true" className="size-4" />
+              Upload sketch
+            </Button>
+          )}
           <Button disabled={!canAct} onClick={onLoad} size="sm" variant="outline">
             <FolderOpen aria-hidden="true" className="size-4" />
             Load

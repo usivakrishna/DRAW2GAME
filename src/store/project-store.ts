@@ -2,17 +2,22 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import type { ProjectStage, ProjectSummary } from "@/types/project";
 import type { StudioDocument } from "@/types/studio";
+import type { UploadedImageMetadata } from "@/types/upload";
 import { createId } from "@/utils/ids";
+import { deleteProjectImageBlob } from "@/utils/image-storage";
 
 interface ProjectStore {
   activeProjectId: string | null;
   createProject: (name: string) => ProjectSummary;
   projects: ProjectSummary[];
+  projectUploads: Record<string, UploadedImageMetadata>;
   removeProject: (projectId: string) => void;
+  removeProjectUpload: (projectId: string) => void;
   renameProject: (projectId: string, name: string) => void;
   saveStudioDocument: (projectId: string, document: StudioDocument) => void;
   setActiveProject: (projectId: string | null) => void;
   setProjectStage: (projectId: string, stage: ProjectStage) => void;
+  setProjectUpload: (projectId: string, metadata: UploadedImageMetadata) => void;
   studioDocuments: Record<string, StudioDocument>;
 }
 
@@ -25,6 +30,7 @@ export const useProjectStore = create<ProjectStore>()(
     (set) => ({
       activeProjectId: null,
       projects: [],
+      projectUploads: {},
       studioDocuments: {},
       createProject: (name) => {
         const timestamp = new Date().toISOString();
@@ -44,11 +50,34 @@ export const useProjectStore = create<ProjectStore>()(
         return project;
       },
       removeProject: (projectId) => {
+        void deleteProjectImageBlob(projectId);
         set((state) => ({
           activeProjectId: state.activeProjectId === projectId ? null : state.activeProjectId,
           projects: state.projects.filter((project) => project.id !== projectId),
+          projectUploads: Object.fromEntries(
+            Object.entries(state.projectUploads).filter(([id]) => id !== projectId),
+          ),
           studioDocuments: Object.fromEntries(
             Object.entries(state.studioDocuments).filter(([id]) => id !== projectId),
+          ),
+        }));
+      },
+      removeProjectUpload: (projectId) => {
+        void deleteProjectImageBlob(projectId);
+        const timestamp = new Date().toISOString();
+
+        set((state) => ({
+          projects: state.projects.map((project) =>
+            project.id === projectId
+              ? {
+                  ...project,
+                  stage: project.stage === "uploaded" ? ("draft" as const) : project.stage,
+                  updatedAt: timestamp,
+                }
+              : project,
+          ),
+          projectUploads: Object.fromEntries(
+            Object.entries(state.projectUploads).filter(([id]) => id !== projectId),
           ),
         }));
       },
@@ -102,12 +131,30 @@ export const useProjectStore = create<ProjectStore>()(
           ),
         }));
       },
+      setProjectUpload: (projectId, metadata) => {
+        set((state) => ({
+          projects: state.projects.map((project) =>
+            project.id === projectId
+              ? {
+                  ...project,
+                  stage: "uploaded" as const,
+                  updatedAt: metadata.uploadedAt,
+                }
+              : project,
+          ),
+          projectUploads: {
+            ...state.projectUploads,
+            [projectId]: metadata,
+          },
+        }));
+      },
     }),
     {
       name: "draw2game-projects",
       partialize: (state) => ({
         activeProjectId: state.activeProjectId,
         projects: state.projects,
+        projectUploads: state.projectUploads,
         studioDocuments: state.studioDocuments,
       }),
       storage: createJSONStorage(() => localStorage),
