@@ -7,6 +7,7 @@ import {
   Pause,
   Play,
   RotateCcw,
+  Sparkles,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -18,11 +19,13 @@ import type { GameStatus } from "@/types/game";
 interface GameHUDProps {
   coinsCollected: number;
   gameMode: "side-scrolling" | "single-screen";
+  isAIEditorOpen?: boolean;
   levelName: string;
   onOpenControlsHelp: () => void;
   onRestart: () => void;
   onStyleChange: (styleId: StyleId) => void;
   onThemeChange: (themeId: ThemeId) => void;
+  onToggleAIEditor?: () => void;
   onTogglePause: () => void;
   projectId: string;
   score: number;
@@ -35,11 +38,13 @@ interface GameHUDProps {
 export function GameHUD({
   coinsCollected,
   gameMode,
+  isAIEditorOpen,
   levelName,
   onOpenControlsHelp,
   onRestart,
   onStyleChange,
   onThemeChange,
+  onToggleAIEditor,
   onTogglePause,
   projectId,
   score,
@@ -90,8 +95,25 @@ export function GameHUD({
         )}
       </div>
 
-      {/* Right: Theme / Style selectors, Pause, Restart, Help */}
+      {/* Right: Theme / Style selectors, Pause, Restart, Help, AI Editor */}
       <div className="flex flex-wrap items-center gap-2">
+        {/* AI Editor Toggle Button */}
+        {onToggleAIEditor && (
+          <Button
+            className={`h-8 gap-1.5 text-xs font-semibold transition ${
+              isAIEditorOpen
+                ? "bg-purple-600 text-white hover:bg-purple-500 shadow-md shadow-purple-600/20"
+                : "border border-purple-500/40 bg-purple-950/40 text-purple-200 hover:bg-purple-900/60 hover:text-white"
+            }`}
+            onClick={onToggleAIEditor}
+            size="sm"
+            variant="outline"
+          >
+            <Sparkles className="size-3.5 text-purple-300" />
+            <span>AI Editor</span>
+          </Button>
+        )}
+
         {/* Theme Picker */}
         <div className="flex items-center gap-1.5 rounded-lg border border-slate-800 bg-slate-900 px-2 py-1">
           <Palette className="size-3.5 text-slate-400" />

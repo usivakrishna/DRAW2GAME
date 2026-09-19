@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { AIEditorPanel } from "@/components/game/AIEditorPanel";
 import { GameCanvas } from "@/components/game/GameCanvas";
 import { GameHUD } from "@/components/game/GameHUD";
 import {
@@ -9,6 +10,9 @@ import {
   GameWinOverlay,
 } from "@/components/game/GameOverlays";
 import { NoLevelAlert } from "@/components/game/NoLevelAlert";
+import { parseEditCommand } from "@/game-editor/command-parser";
+import { applyEditCommand } from "@/game-editor/level-modifier";
+import type { EditHistoryItem } from "@/game-editor/types";
 import { loadRuntimeLevel } from "@/game/levels/level-loader";
 import type { PhaserGameBridge } from "@/game/PhaserGameBridge";
 import {
@@ -27,6 +31,7 @@ export function GamePage() {
   const projectLevels = useProjectStore((state) => state.projectLevels);
   const projects = useProjectStore((state) => state.projects);
   const setActiveProject = useProjectStore((state) => state.setActiveProject);
+  const setProjectLevel = useProjectStore((state) => state.setProjectLevel);
 
   const bridgeRef = useRef<PhaserGameBridge | null>(null);
 
@@ -34,6 +39,14 @@ export function GamePage() {
   const [selectedTheme, setSelectedTheme] = useState<ThemeId>("classic");
   const [selectedStyle, setSelectedStyle] = useState<StyleId>("clean");
   const [isControlsHelpOpen, setControlsHelpOpen] = useState(false);
+
+  // Phase 7: AI Editor state
+  const [isAIEditorOpen, setAIEditorOpen] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [lastError, setLastError] = useState<string | null>(null);
+  const [lastSuccess, setLastSuccess] = useState<string | null>(null);
+  const [suggestions, setSuggestions] = useState<string[] | undefined>(undefined);
+  const [history, setHistory] = useState<EditHistoryItem[]>([]);
 
   // 1. Auto-redirect if missing projectId
   useEffect(() => {
@@ -76,6 +89,14 @@ export function GamePage() {
     });
   }, [gameStateManager]);
 
+  // Reset AI editor state when changing projects (project isolation)
+  useEffect(() => {
+    setHistory([]);
+    setLastError(null);
+    setLastSuccess(null);
+    setSuggestions(undefined);
+  }, [projectId]);
+
   // Handlers
   const handleRestart = useCallback(() => {
     if (bridgeRef.current) {
@@ -97,6 +118,116 @@ export function GamePage() {
     bridgeRef.current = bridge;
   }, []);
 
+  const handleToggleAIEditor = useCallback(() => {
+    setAIEditorOpen((prev) => !prev);
+  }, []);
+
+  const handleSubmitPrompt = useCallback(
+    (promptText: string) => {
+      if (!levelDefinition || !projectId) return;
+
+      setIsProcessing(true);
+      setLastError(null);
+      setLastSuccess(null);
+      setSuggestions(undefined);
+
+      try {
+        const parseResult = parseEditCommand(promptText);
+        if (!parseResult.success || !parseResult.command) {
+          setLastError(parseResult.error ?? "Could not understand command.");
+          setSuggestions(parseResult.suggestions);
+          setIsProcessing(false);
+          return;
+        }
+
+        const executionResult = applyEditCommand(
+          levelDefinition,
+          parseResult.command,
+          selectedTheme,
+          selectedStyle,
+        );
+
+        if (!executionResult.success || !executionResult.updatedLevel) {
+          setLastError(executionResult.error ?? "Failed to apply edit to level.");
+          setIsProcessing(false);
+          return;
+        }
+
+        // Record undo history item
+        const historyItem: EditHistoryItem = {
+          action: parseResult.command.action,
+          id: `edit_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+          previousLevel: levelDefinition,
+          previousStyle: selectedStyle,
+          previousTheme: selectedTheme,
+          prompt: promptText,
+          summary: executionResult.message ?? "Level updated.",
+          target: parseResult.command.target,
+          timestamp: new Date().toISOString(),
+        };
+
+        setHistory((prev) => [historyItem, ...prev]);
+
+        // Update canonical project level in store
+        setProjectLevel(projectId, executionResult.updatedLevel);
+
+        // Update Theme if changed
+        if (executionResult.updatedTheme && executionResult.updatedTheme !== selectedTheme) {
+          setSelectedTheme(executionResult.updatedTheme);
+        }
+
+        // Update Style if changed
+        if (executionResult.updatedStyle && executionResult.updatedStyle !== selectedStyle) {
+          setSelectedStyle(executionResult.updatedStyle);
+        }
+
+        setLastSuccess(executionResult.message ?? "Level updated.");
+      } catch (err) {
+        setLastError(
+          err instanceof Error
+            ? err.message
+            : "An unexpected error occurred while modifying the level.",
+        );
+      } finally {
+        setIsProcessing(false);
+      }
+    },
+    [levelDefinition, projectId, selectedTheme, selectedStyle, setProjectLevel],
+  );
+
+  const handleUndo = useCallback(
+    (historyItemId: string) => {
+      if (!projectId) return;
+      const targetIndex = history.findIndex((item) => item.id === historyItemId);
+      if (targetIndex === -1) return;
+
+      const targetItem = history[targetIndex];
+      if (!targetItem) return;
+
+      // Revert project level
+      setProjectLevel(projectId, targetItem.previousLevel);
+
+      // Revert theme/style if needed
+      if (targetItem.previousTheme) {
+        setSelectedTheme(targetItem.previousTheme);
+      }
+      if (targetItem.previousStyle) {
+        setSelectedStyle(targetItem.previousStyle);
+      }
+
+      // Remove this history item and newer items
+      setHistory((prev) => prev.slice(targetIndex + 1));
+      setLastSuccess(`Undid "${targetItem.prompt}"`);
+      setLastError(null);
+      setSuggestions(undefined);
+    },
+    [history, projectId, setProjectLevel],
+  );
+
+  const handleClearHistory = useCallback(() => {
+    setHistory([]);
+  }, []);
+
   if (!projectId || !currentProject) {
     return null;
   }
@@ -116,11 +247,13 @@ export function GamePage() {
       <GameHUD
         coinsCollected={gameState.coinsCollected}
         gameMode={runtimeLevel.gameMode}
+        isAIEditorOpen={isAIEditorOpen}
         levelName={runtimeLevel.name}
         onOpenControlsHelp={() => setControlsHelpOpen(true)}
         onRestart={handleRestart}
         onStyleChange={setSelectedStyle}
         onThemeChange={setSelectedTheme}
+        onToggleAIEditor={handleToggleAIEditor}
         onTogglePause={handleTogglePause}
         projectId={projectId}
         score={gameState.score}
@@ -168,6 +301,20 @@ export function GamePage() {
             projectId={projectId}
           />
         )}
+
+        {/* Phase 7: AI Editor Side Panel */}
+        <AIEditorPanel
+          history={history}
+          isOpen={isAIEditorOpen}
+          isProcessing={isProcessing}
+          lastError={lastError}
+          lastSuccess={lastSuccess}
+          onClearHistory={handleClearHistory}
+          onClose={() => setAIEditorOpen(false)}
+          onSubmitPrompt={handleSubmitPrompt}
+          onUndo={handleUndo}
+          suggestions={suggestions}
+        />
       </main>
 
       {/* Keyboard Controls Help Dialog */}
