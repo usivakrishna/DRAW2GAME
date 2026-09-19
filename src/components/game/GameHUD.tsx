@@ -3,6 +3,7 @@ import {
   Coins,
   Compass,
   HelpCircle,
+  LayoutDashboard,
   Palette,
   Pause,
   Play,
@@ -55,8 +56,15 @@ export function GameHUD({
 }: GameHUDProps) {
   return (
     <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 bg-slate-950 px-4 py-2.5 text-slate-100 sm:px-6">
-      {/* Left: Back link and Level Name */}
-      <div className="flex items-center gap-3">
+      {/* Left: Back links and Level Name */}
+      <div className="flex items-center gap-2.5">
+        <Button asChild className="h-8 text-xs text-slate-300 hover:text-white hover:bg-slate-800" size="sm" variant="ghost">
+          <Link to="/dashboard">
+            <LayoutDashboard className="size-3.5 mr-1" />
+            <span>Dashboard</span>
+          </Link>
+        </Button>
+
         <Button asChild className="h-8 text-xs text-slate-300 hover:text-white hover:bg-slate-800" size="sm" variant="ghost">
           <Link to={`/projects/${projectId}/json`}>
             <ArrowLeft className="size-3.5 mr-1" />
