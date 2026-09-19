@@ -1,10 +1,13 @@
 import {
   AlertCircle,
+  ArrowRight,
   Cpu,
+  FileCode,
   Loader2,
   Sparkles,
   Trash2,
 } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
   CLASS_COLORS,
@@ -25,6 +28,7 @@ interface DetectionResultsListProps {
   onIouChange: (val: number) => void;
   onRunDetection: () => void;
   predictions: DetectionPrediction[];
+  projectId?: string;
 }
 
 export function DetectionResultsList({
@@ -38,6 +42,7 @@ export function DetectionResultsList({
   onIouChange,
   onRunDetection,
   predictions,
+  projectId,
 }: DetectionResultsListProps) {
   return (
     <div className="space-y-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -222,6 +227,19 @@ export function DetectionResultsList({
           </div>
         )}
       </div>
+
+      {/* Phase 5 Action: Level JSON */}
+      {projectId && (
+        <div className="pt-2 border-t border-slate-100">
+          <Button asChild className="w-full gap-2 bg-slate-900 text-white hover:bg-slate-800" size="sm">
+            <Link to={`/projects/${projectId}/json`}>
+              <FileCode className="size-4" />
+              <span>Convert to Level JSON</span>
+              <ArrowRight className="size-4 ml-auto" />
+            </Link>
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

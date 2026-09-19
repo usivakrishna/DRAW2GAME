@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { createEmptyLevel } from "@/json/level-schema";
 import { useProjectStore } from "@/store/project-store";
 import type { StudioDocument } from "@/types/studio";
 
@@ -7,6 +8,7 @@ describe("useProjectStore", () => {
     useProjectStore.setState({
       activeProjectId: null,
       projectDetections: {},
+      projectLevels: {},
       projects: [],
       projectUploads: {},
       studioDocuments: {},
@@ -432,6 +434,120 @@ describe("useProjectStore", () => {
 
       expect(useProjectStore.getState().projectDetections[project.id]).toBeUndefined();
       expect(useProjectStore.getState().projects).toHaveLength(0);
+    });
+  });
+
+  describe("Phase 5 - Level JSON Persistence", () => {
+    it("stores level definition and updates project stage to generated", () => {
+      const store = useProjectStore.getState();
+      const project = store.createProject("Stage Progression Project");
+
+      const level = createEmptyLevel(project.name);
+      store.setProjectLevel(project.id, level);
+
+      expect(useProjectStore.getState().projectLevels[project.id]).toEqual(level);
+      expect(useProjectStore.getState().projects[0]?.stage).toBe("generated");
+    });
+
+    it("maintains project-isolated Level JSON between Project A and Project B", () => {
+      const store = useProjectStore.getState();
+      const projectA = store.createProject("Project A");
+      const projectB = store.createProject("Project B");
+
+      const levelA = createEmptyLevel("Level A", "single-screen");
+      const levelB = createEmptyLevel("Level B", "side-scrolling");
+
+      store.setProjectLevel(projectA.id, levelA);
+      store.setProjectLevel(projectB.id, levelB);
+
+      expect(useProjectStore.getState().projectLevels[projectA.id]?.name).toBe("Level A");
+      expect(useProjectStore.getState().projectLevels[projectA.id]?.gameMode).toBe("single-screen");
+
+      expect(useProjectStore.getState().projectLevels[projectB.id]?.name).toBe("Level B");
+      expect(useProjectStore.getState().projectLevels[projectB.id]?.gameMode).toBe("side-scrolling");
+
+      // Modifying Level A does not affect Level B
+      store.setProjectLevel(projectA.id, {
+        ...levelA,
+        name: "Level A Modified",
+      });
+
+      expect(useProjectStore.getState().projectLevels[projectA.id]?.name).toBe("Level A Modified");
+      expect(useProjectStore.getState().projectLevels[projectB.id]?.name).toBe("Level B");
+    });
+
+    it("clears level JSON and reverts stage appropriately", () => {
+      const store = useProjectStore.getState();
+      const project = store.createProject("Clear Level Project");
+
+      // Add detection first
+      store.setProjectDetections(project.id, [
+        {
+          boundingBox: { height: 20, width: 20, x: 10, y: 10 },
+          className: "coin" as const,
+          confidence: 0.9,
+          id: "coin-1",
+        },
+      ]);
+      expect(useProjectStore.getState().projects[0]?.stage).toBe("detected");
+
+      // Set level
+      const level = createEmptyLevel(project.name);
+      store.setProjectLevel(project.id, level);
+      expect(useProjectStore.getState().projects[0]?.stage).toBe("generated");
+
+      // Clear level
+      store.clearProjectLevel(project.id);
+      expect(useProjectStore.getState().projectLevels[project.id]).toBeUndefined();
+      // Should revert to detected since detections exist
+      expect(useProjectStore.getState().projects[0]?.stage).toBe("detected");
+    });
+
+    it("removes level definition when project is deleted without affecting other projects", () => {
+      const store = useProjectStore.getState();
+      const projectA = store.createProject("Project A to Delete");
+      const projectB = store.createProject("Project B Keep");
+
+      const levelA = createEmptyLevel("Level A");
+      const levelB = createEmptyLevel("Level B");
+
+      store.setProjectLevel(projectA.id, levelA);
+      store.setProjectLevel(projectB.id, levelB);
+
+      store.removeProject(projectA.id);
+
+      expect(useProjectStore.getState().projectLevels[projectA.id]).toBeUndefined();
+      expect(useProjectStore.getState().projectLevels[projectB.id]).toEqual(levelB);
+      expect(useProjectStore.getState().projects).toHaveLength(1);
+    });
+
+    it("preserves studio canvas and upload data when level JSON is saved", () => {
+      const store = useProjectStore.getState();
+      const project = store.createProject("Preservation Test");
+
+      const doc: StudioDocument = {
+        canvasJson: '{"objects":[{"type":"circle"}]}',
+        savedAt: new Date().toISOString(),
+        version: 1,
+        world: { height: 720, width: 1280 },
+      };
+      store.saveStudioDocument(project.id, doc);
+
+      store.setProjectUpload(project.id, {
+        dimensions: { height: 600, width: 800 },
+        fileName: "sketch.png",
+        fileSize: 12345,
+        mimeType: "image/png",
+        uploadedAt: new Date().toISOString(),
+      });
+
+      const level = createEmptyLevel(project.name);
+      store.setProjectLevel(project.id, level);
+
+      // Verify canvas document and upload metadata are untouched
+      expect(useProjectStore.getState().studioDocuments[project.id]).toEqual(doc);
+      expect(useProjectStore.getState().projectUploads[project.id]?.fileName).toBe("sketch.png");
+      expect(useProjectStore.getState().projectLevels[project.id]).toEqual(level);
     });
   });
 });

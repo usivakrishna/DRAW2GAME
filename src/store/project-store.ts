@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
+import type { LevelDefinition } from "@/json/level-schema";
 import type { DetectionPrediction } from "@/types/detection";
 import type { ProjectStage, ProjectSummary } from "@/types/project";
 import type { StudioDocument } from "@/types/studio";
@@ -10,8 +11,10 @@ import { deleteProjectImageBlob } from "@/utils/image-storage";
 interface ProjectStore {
   activeProjectId: string | null;
   clearProjectDetections: (projectId: string) => void;
+  clearProjectLevel: (projectId: string) => void;
   createProject: (name: string) => ProjectSummary;
   projectDetections: Record<string, DetectionPrediction[]>;
+  projectLevels: Record<string, LevelDefinition>;
   projects: ProjectSummary[];
   projectUploads: Record<string, UploadedImageMetadata>;
   removeProject: (projectId: string) => void;
@@ -20,6 +23,7 @@ interface ProjectStore {
   saveStudioDocument: (projectId: string, document: StudioDocument) => void;
   setActiveProject: (projectId: string | null) => void;
   setProjectDetections: (projectId: string, detections: DetectionPrediction[]) => void;
+  setProjectLevel: (projectId: string, level: LevelDefinition) => void;
   setProjectStage: (projectId: string, stage: ProjectStage) => void;
   setProjectUpload: (projectId: string, metadata: UploadedImageMetadata) => void;
   studioDocuments: Record<string, StudioDocument>;
@@ -34,6 +38,7 @@ export const useProjectStore = create<ProjectStore>()(
     (set) => ({
       activeProjectId: null,
       projectDetections: {},
+      projectLevels: {},
       projects: [],
       projectUploads: {},
       studioDocuments: {},
@@ -48,6 +53,27 @@ export const useProjectStore = create<ProjectStore>()(
               ? {
                   ...project,
                   stage: state.projectUploads[projectId] ? ("uploaded" as const) : ("draft" as const),
+                  updatedAt: timestamp,
+                }
+              : project,
+          ),
+        }));
+      },
+      clearProjectLevel: (projectId) => {
+        const timestamp = new Date().toISOString();
+        set((state) => ({
+          projectLevels: Object.fromEntries(
+            Object.entries(state.projectLevels).filter(([id]) => id !== projectId),
+          ),
+          projects: state.projects.map((project) =>
+            project.id === projectId
+              ? {
+                  ...project,
+                  stage: state.projectDetections[projectId]
+                    ? ("detected" as const)
+                    : state.projectUploads[projectId]
+                      ? ("uploaded" as const)
+                      : ("draft" as const),
                   updatedAt: timestamp,
                 }
               : project,
@@ -77,6 +103,9 @@ export const useProjectStore = create<ProjectStore>()(
           activeProjectId: state.activeProjectId === projectId ? null : state.activeProjectId,
           projectDetections: Object.fromEntries(
             Object.entries(state.projectDetections).filter(([id]) => id !== projectId),
+          ),
+          projectLevels: Object.fromEntries(
+            Object.entries(state.projectLevels).filter(([id]) => id !== projectId),
           ),
           projects: state.projects.filter((project) => project.id !== projectId),
           projectUploads: Object.fromEntries(
@@ -159,6 +188,24 @@ export const useProjectStore = create<ProjectStore>()(
           ),
         }));
       },
+      setProjectLevel: (projectId, level) => {
+        const timestamp = new Date().toISOString();
+        set((state) => ({
+          projectLevels: {
+            ...state.projectLevels,
+            [projectId]: level,
+          },
+          projects: state.projects.map((project) =>
+            project.id === projectId
+              ? {
+                  ...project,
+                  stage: "generated" as const,
+                  updatedAt: timestamp,
+                }
+              : project,
+          ),
+        }));
+      },
       setProjectStage: (projectId, stage) => {
         const timestamp = new Date().toISOString();
 
@@ -197,6 +244,7 @@ export const useProjectStore = create<ProjectStore>()(
       partialize: (state) => ({
         activeProjectId: state.activeProjectId,
         projectDetections: state.projectDetections,
+        projectLevels: state.projectLevels,
         projects: state.projects,
         projectUploads: state.projectUploads,
         studioDocuments: state.studioDocuments,

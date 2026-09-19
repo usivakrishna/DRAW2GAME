@@ -34,6 +34,10 @@ export const router = createBrowserRouter([
         element: <DetectionPage />,
       },
       {
+        path: "json",
+        element: <JsonEditorPage />,
+      },
+      {
         path: "projects/:projectId",
         element: <StudioLayout />,
         children: [

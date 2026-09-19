@@ -348,6 +348,7 @@ export function DetectionPage() {
                 onIouChange={setIouThreshold}
                 onRunDetection={handleRunDetection}
                 predictions={currentDetections}
+                projectId={projectId}
               />
             </div>
           </div>
