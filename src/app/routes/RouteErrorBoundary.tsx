@@ -19,9 +19,14 @@ export function RouteErrorBoundary() {
           DRAW2GAME could not open this view.
         </h1>
         <p className="mt-3 text-sm leading-6 text-slate-600">{message}</p>
-        <Button asChild className="mt-6">
-          <Link to="/">Return home</Link>
-        </Button>
+        <div className="mt-6 flex flex-wrap gap-3">
+          <Button asChild>
+            <Link to="/dashboard">Go to Dashboard</Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link to="/">Return home</Link>
+          </Button>
+        </div>
       </section>
     </main>
   );

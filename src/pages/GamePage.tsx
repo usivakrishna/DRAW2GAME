@@ -10,6 +10,7 @@ import {
   GameWinOverlay,
 } from "@/components/game/GameOverlays";
 import { NoLevelAlert } from "@/components/game/NoLevelAlert";
+import { ProjectNotFoundState } from "@/components/shared/ProjectNotFoundState";
 import { parseEditCommand } from "@/game-editor/command-parser";
 import { applyEditCommand } from "@/game-editor/level-modifier";
 import type { EditHistoryItem } from "@/game-editor/types";
@@ -227,6 +228,10 @@ export function GamePage() {
   const handleClearHistory = useCallback(() => {
     setHistory([]);
   }, []);
+
+  if (projectId && !currentProject) {
+    return <ProjectNotFoundState projectId={projectId} />;
+  }
 
   if (!projectId || !currentProject) {
     return null;

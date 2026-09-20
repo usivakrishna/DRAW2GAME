@@ -10,6 +10,10 @@ interface FeaturePlaceholderProps {
   };
   description: string;
   eyebrow: string;
+  secondaryAction?: {
+    label: string;
+    to: string;
+  };
   title: string;
 }
 
@@ -17,6 +21,7 @@ export function FeaturePlaceholder({
   action,
   description,
   eyebrow,
+  secondaryAction,
   title,
 }: FeaturePlaceholderProps) {
   return (
@@ -32,11 +37,20 @@ export function FeaturePlaceholder({
           {title}
         </h1>
         <p className="mx-auto mt-4 max-w-xl text-base leading-7 text-slate-600">{description}</p>
-        {action ? (
-          <Button asChild className="mt-8">
-            <Link to={action.to}>{action.label}</Link>
-          </Button>
-        ) : null}
+        {(action || secondaryAction) && (
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+            {action && (
+              <Button asChild>
+                <Link to={action.to}>{action.label}</Link>
+              </Button>
+            )}
+            {secondaryAction && (
+              <Button asChild variant="outline">
+                <Link to={secondaryAction.to}>{secondaryAction.label}</Link>
+              </Button>
+            )}
+          </div>
+        )}
       </section>
     </PageContainer>
   );

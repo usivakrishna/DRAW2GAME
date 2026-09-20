@@ -8,6 +8,7 @@ import { DetectionOverlayCanvas } from "@/components/detection/DetectionOverlayC
 import { DetectionResultsList } from "@/components/detection/DetectionResultsList";
 import { PreprocessingControls } from "@/components/detection/PreprocessingControls";
 import { ProjectPicker } from "@/components/drawing/ProjectPicker";
+import { ProjectNotFoundState } from "@/components/shared/ProjectNotFoundState";
 import { Button } from "@/components/ui/button";
 import { useProjectStore } from "@/store/project-store";
 import {
@@ -264,6 +265,10 @@ export function DetectionPage() {
     clearProjectDetections(projectId);
     toast.info("Detections cleared");
   }, [clearProjectDetections, projectId]);
+
+  if (projectId && !currentProject) {
+    return <ProjectNotFoundState projectId={projectId} />;
+  }
 
   if (!projectId || !currentProject) {
     return (

@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { FabricObject } from "fabric";
-import { AlertCircle } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { InspectorPanel } from "@/components/drawing/InspectorPanel";
@@ -8,7 +7,7 @@ import { ProjectPicker } from "@/components/drawing/ProjectPicker";
 import { StudioCanvas } from "@/components/drawing/StudioCanvas";
 import { StudioHeader } from "@/components/drawing/StudioHeader";
 import { StudioToolbar } from "@/components/drawing/StudioToolbar";
-import { Button } from "@/components/ui/button";
+import { ProjectNotFoundState } from "@/components/shared/ProjectNotFoundState";
 import { type InspectorProperty, useStudioCanvas } from "@/hooks/use-studio-canvas";
 import { useProjectStore } from "@/store/project-store";
 import { DEFAULT_STUDIO_WORLD, type StudioTool } from "@/types/studio";
@@ -318,20 +317,7 @@ export function StudioPage() {
   }
 
   if (!currentProject) {
-    return (
-      <div className="grid min-h-[calc(100svh-4rem)] place-items-center bg-slate-50 p-6">
-        <section className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-7 text-center shadow-sm">
-          <AlertCircle aria-hidden="true" className="mx-auto size-8 text-amber-500" />
-          <h1 className="mt-4 text-lg font-semibold text-slate-900">Project not found</h1>
-          <p className="mt-2 text-sm leading-6 text-slate-600">
-            This saved drawing project is no longer available in local storage.
-          </p>
-          <Button className="mt-5" onClick={() => navigate("/studio")} variant="outline">
-            Create a new project
-          </Button>
-        </section>
-      </div>
-    );
+    return <ProjectNotFoundState projectId={projectId} />;
   }
 
   const canAct = Boolean(canvas);

@@ -3,6 +3,7 @@ import { Loader2 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { ProjectPicker } from "@/components/drawing/ProjectPicker";
+import { ProjectNotFoundState } from "@/components/shared/ProjectNotFoundState";
 import { UploadDropzone } from "@/components/upload/UploadDropzone";
 import { UploadHeader } from "@/components/upload/UploadHeader";
 import { UploadPreview } from "@/components/upload/UploadPreview";
@@ -198,6 +199,10 @@ export function UploadPage() {
     const newProject = createProject("Untitled level");
     navigate(`/projects/${newProject.id}/upload`);
   }, [createProject, navigate]);
+
+  if (projectId && !currentProject) {
+    return <ProjectNotFoundState projectId={projectId} />;
+  }
 
   if (!projectId || !currentProject) {
     return (

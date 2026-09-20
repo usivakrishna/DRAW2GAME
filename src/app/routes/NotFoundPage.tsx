@@ -3,10 +3,11 @@ import { FeaturePlaceholder } from "@/components/shared/FeaturePlaceholder";
 export function NotFoundPage() {
   return (
     <FeaturePlaceholder
-      action={{ label: "Return home", to: "/" }}
+      action={{ label: "Go to Dashboard", to: "/dashboard" }}
+      description="Choose a project workspace from your dashboard or return to the DRAW2GAME home page."
       eyebrow="404"
-      title="This route does not exist."
-      description="Choose a workspace from the navigation or return to the DRAW2GAME home page."
+      secondaryAction={{ label: "Return home", to: "/" }}
+      title="This page does not exist."
     />
   );
 }

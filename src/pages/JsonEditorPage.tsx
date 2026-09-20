@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { ProjectPicker } from "@/components/drawing/ProjectPicker";
+import { ProjectNotFoundState } from "@/components/shared/ProjectNotFoundState";
 import { LevelHeader } from "@/components/level/LevelHeader";
 import { LevelJsonViewer } from "@/components/level/LevelJsonViewer";
 import { LevelOverviewPanel } from "@/components/level/LevelOverviewPanel";
@@ -191,6 +192,10 @@ export function JsonEditorPage() {
     },
     [navigate, setActiveProject],
   );
+
+  if (projectId && !currentProject) {
+    return <ProjectNotFoundState projectId={projectId} />;
+  }
 
   if (!projectId || !currentProject) {
     return null;

@@ -1,4 +1,4 @@
-import { AlertCircle, ArrowRight, FileCode, Paintbrush, UploadCloud } from "lucide-react";
+import { AlertCircle, ArrowRight, FileCode, LayoutDashboard, Paintbrush, UploadCloud } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 
@@ -41,6 +41,13 @@ export function NoLevelAlert({ projectId, projectName }: NoLevelAlertProps) {
             <Link to={`/projects/${projectId}/studio`}>
               <Paintbrush className="size-4" />
               <span>Open Drawing Studio</span>
+            </Link>
+          </Button>
+
+          <Button asChild className="w-full gap-2" variant="outline">
+            <Link to="/dashboard">
+              <LayoutDashboard className="size-4" />
+              <span>Back to Dashboard</span>
             </Link>
           </Button>
 
