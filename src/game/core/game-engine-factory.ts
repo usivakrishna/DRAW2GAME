@@ -16,6 +16,7 @@ import {
 } from "./game-definition";
 import type { GameEngine } from "./game-engine";
 import { PlatformerEngine } from "./platformer-engine";
+import { ChessEngine } from "@/game/chess/chess-engine";
 
 export type EngineFactorySuccess = {
   engine: GameEngine;
@@ -88,7 +89,16 @@ export class GameEngineFactory {
       };
     }
 
-    // 3. Known extension types (Phase 11+ extension points)
+    // 3. Built-in chess engine (Phase 12)
+    if (gameType === "chess") {
+      return {
+        engine: new ChessEngine(),
+        gameType: "chess",
+        success: true,
+      };
+    }
+
+    // 4. Known extension types (Phase 11+ extension points)
     if (
       (EXTENSION_GAME_TYPES as readonly string[]).includes(
         gameType as ExtensionGameType,
@@ -102,9 +112,9 @@ export class GameEngineFactory {
       };
     }
 
-    // 4. Unknown game type
+    // 5. Unknown game type
     return {
-      error: `Unsupported game type: "${gameType}". Supported type is "platformer".`,
+      error: `Unsupported game type: "${gameType}". Supported types are "platformer", "chess".`,
       isExtensionPoint: false,
       requestedType: gameType,
       success: false,
@@ -126,7 +136,7 @@ export class GameEngineFactory {
    * Lists all game types that currently have active engine implementations.
    */
   public static getAvailableGameTypes(): string[] {
-    const types = ["platformer", ...Array.from(this.customRegistry.keys())];
+    const types = ["platformer", "chess", ...Array.from(this.customRegistry.keys())];
     return Array.from(new Set(types));
   }
 

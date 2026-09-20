@@ -9,7 +9,10 @@
  * without fabricating fake AI predictions or cloud dependencies.
  */
 
-import type { GameType } from "@/game/core/game-definition";
+import {
+  type GameType,
+  isSupportedGameType,
+} from "@/game/core/game-definition";
 import {
   extractStructuralFeatures,
   type FeatureExtractionInput,
@@ -88,18 +91,20 @@ export class GameRecognizer {
 
     // 1. Handle explicit manual override
     if (manualOverride) {
-      const isPlatformer = manualOverride === "platformer";
+      const isPlayable = isSupportedGameType(manualOverride);
       return {
         alternatives: [],
         confidence: 1.0,
         evidence: [`User explicitly selected ${manualOverride} game type`],
         gameType: manualOverride,
         source: "manual",
-        suggestedAction: isPlatformer
-          ? "Proceed to Level JSON generation and play your platformer game."
+        suggestedAction: isPlayable
+          ? manualOverride === "chess"
+            ? "Chess engine is ready. Play chess now!"
+            : "Proceed to Level JSON generation and play your platformer game."
           : `${manualOverride.toUpperCase()} engine is an extension point coming in a future phase.`,
-        supported: isPlatformer,
-        warnings: isPlatformer
+        supported: isPlayable,
+        warnings: isPlayable
           ? []
           : [
               `Gameplay engine for "${manualOverride}" is an architecture extension point coming in a future phase.`,
@@ -175,7 +180,7 @@ export class GameRecognizer {
     }
 
     // 6. Case: Confident match
-    const isSupported = topCandidate.gameType === "platformer";
+    const isSupported = isSupportedGameType(topCandidate.gameType);
     const alternatives = candidates
       .slice(1)
       .filter((c) => c.confidence >= 0.20)
@@ -188,7 +193,9 @@ export class GameRecognizer {
       gameType: topCandidate.gameType,
       source: "structural",
       suggestedAction: isSupported
-        ? "Platformer engine is ready. Convert to Level JSON and play!"
+        ? topCandidate.gameType === "chess"
+          ? "Chess engine is ready! Click to play chess now."
+          : "Platformer engine is ready. Convert to Level JSON and play!"
         : `${topCandidate.gameType.toUpperCase()} recognized! Note: gameplay engine is an extension point scheduled for future phases.`,
       supported: isSupported,
       warnings: topCandidate.warnings ?? [],

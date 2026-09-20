@@ -57,10 +57,6 @@ export class ChessRecognizer implements RecognizerModule {
       score = Math.max(0, score - 0.25);
     }
 
-    warnings.push(
-      "Chess gameplay engine is an architecture extension point coming in a future phase.",
-    );
-
     const confidence = Number(Math.min(1, Math.max(0, score)).toFixed(2));
 
     return {

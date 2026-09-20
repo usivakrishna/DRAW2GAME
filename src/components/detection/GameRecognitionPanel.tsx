@@ -98,7 +98,7 @@ export function GameRecognitionPanel({
   // Active game type (user override takes precedence)
   const activeGameType = userOverride ?? autoResult.gameType;
   const isManuallyOverridden = Boolean(userOverride);
-  const isPlayable = activeGameType === "platformer";
+  const isPlayable = activeGameType === "platformer" || activeGameType === "chess";
   const isUnknown = activeGameType === "unknown";
 
   const confidencePercent = isManuallyOverridden
@@ -304,6 +304,7 @@ export function GameRecognitionPanel({
           </option>
           <optgroup label="Playable Game Types">
             <option value="platformer">2D Platformer (Playable)</option>
+            <option value="chess">Chess (Playable)</option>
           </optgroup>
           <optgroup label="Architecture Extension Points (Future Engines)">
             {EXTENSION_GAME_TYPES.map((type) => (
@@ -318,17 +319,31 @@ export function GameRecognitionPanel({
       {/* Primary Action Button */}
       <div className="pt-1">
         {isPlayable ? (
-          <Button
-            asChild
-            className="w-full gap-2 bg-emerald-600 hover:bg-emerald-500 text-white"
-            size="sm"
-          >
-            <Link to={`/projects/${projectId}/json`}>
-              <Sparkles className="size-4" />
-              <span>Convert to Level JSON</span>
-              <ArrowRight className="size-4 ml-auto" />
-            </Link>
-          </Button>
+          activeGameType === "chess" ? (
+            <Button
+              asChild
+              className="w-full gap-2 bg-emerald-600 hover:bg-emerald-500 text-white"
+              size="sm"
+            >
+              <Link to={`/projects/${projectId}/play`}>
+                <Sparkles className="size-4" />
+                <span>Play Chess Now</span>
+                <ArrowRight className="size-4 ml-auto" />
+              </Link>
+            </Button>
+          ) : (
+            <Button
+              asChild
+              className="w-full gap-2 bg-emerald-600 hover:bg-emerald-500 text-white"
+              size="sm"
+            >
+              <Link to={`/projects/${projectId}/json`}>
+                <Sparkles className="size-4" />
+                <span>Convert to Level JSON</span>
+                <ArrowRight className="size-4 ml-auto" />
+              </Link>
+            </Button>
+          )
         ) : isUnknown ? (
           <div className="rounded-lg bg-slate-50 p-2.5 text-center text-xs text-slate-500 border border-slate-200">
             <p>

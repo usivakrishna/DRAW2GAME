@@ -107,7 +107,7 @@ describe("Phase 11: Game Recognition & Game-Type Detection", () => {
 
     const fullResult = GameRecognizer.recognize(features);
     expect(fullResult.gameType).toBe("chess");
-    expect(fullResult.supported).toBe(false); // Recognized but not yet playable
+    expect(fullResult.supported).toBe(true); // Playable in Phase 12
   });
 
   // 3. Ludo Recognition
@@ -346,7 +346,7 @@ describe("Phase 11: Game Recognition & Game-Type Detection", () => {
     expect(result.gameType).toBe("chess");
     expect(result.confidence).toBe(1.0);
     expect(result.source).toBe("manual");
-    expect(result.supported).toBe(false);
+    expect(result.supported).toBe(true); // Playable in Phase 12
   });
 
   // 12. Project Store Persistence & Isolation
@@ -380,12 +380,16 @@ describe("Phase 11: Game Recognition & Game-Type Detection", () => {
     const platResult = GameEngineFactory.createEngine("platformer");
     expect(platResult.success).toBe(true);
 
-    // Chess returns typed failure (extension point)
+    // Chess succeeds (Phase 12 playable engine)
     const chessResult = GameEngineFactory.createEngine("chess");
-    expect(chessResult.success).toBe(false);
-    if (!chessResult.success) {
-      expect(chessResult.isExtensionPoint).toBe(true);
-      expect(chessResult.error).toContain("extension point");
+    expect(chessResult.success).toBe(true);
+
+    // Ludo returns typed failure (extension point)
+    const ludoResult = GameEngineFactory.createEngine("ludo");
+    expect(ludoResult.success).toBe(false);
+    if (!ludoResult.success) {
+      expect(ludoResult.isExtensionPoint).toBe(true);
+      expect(ludoResult.error).toContain("extension point");
     }
 
     // Unsupported returns typed failure

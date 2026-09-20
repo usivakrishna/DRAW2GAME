@@ -6,11 +6,10 @@
  * from genre-specific implementations.
  */
 
-export const SUPPORTED_GAME_TYPES = ["platformer"] as const;
+export const SUPPORTED_GAME_TYPES = ["platformer", "chess"] as const;
 export type SupportedGameType = (typeof SUPPORTED_GAME_TYPES)[number];
 
 export const EXTENSION_GAME_TYPES = [
-  "chess",
   "ludo",
   "pool",
   "carrom",

@@ -16,6 +16,11 @@ import { Button } from "@/components/ui/button";
 import { parseEditCommand } from "@/game-editor/command-parser";
 import { applyEditCommand } from "@/game-editor/level-modifier";
 import type { EditHistoryItem } from "@/game-editor/types";
+import {
+  createDefaultChessGameDefinition,
+  type ChessGameDefinition,
+} from "@/game/chess/chess-definition";
+import { ChessGameStage } from "@/game/chess/ChessGameStage";
 import { GameEngineFactory } from "@/game/core/game-engine-factory";
 import { levelDefinitionToGameDefinition } from "@/game/core/platformer-definition";
 import { loadRuntimeLevel } from "@/game/levels/level-loader";
@@ -33,10 +38,12 @@ export function GamePage() {
 
   const activeProjectId = useProjectStore((state) => state.activeProjectId);
   const createProject = useProjectStore((state) => state.createProject);
+  const projectChessGames = useProjectStore((state) => state.projectChessGames);
   const projectLevels = useProjectStore((state) => state.projectLevels);
   const projectRecognitions = useProjectStore((state) => state.projectRecognitions);
   const projects = useProjectStore((state) => state.projects);
   const setActiveProject = useProjectStore((state) => state.setActiveProject);
+  const setProjectChessGame = useProjectStore((state) => state.setProjectChessGame);
   const setProjectLevel = useProjectStore((state) => state.setProjectLevel);
   const setUserSelectedGameType = useProjectStore((state) => state.setUserSelectedGameType);
 
@@ -86,6 +93,14 @@ export function GamePage() {
   const engineResult = useMemo(() => {
     return GameEngineFactory.createEngine(effectiveGameType);
   }, [effectiveGameType]);
+
+  // Chess definition derivation
+  const storedChessGame = projectId ? projectChessGames[projectId] : undefined;
+  const activeChessGame = useMemo(() => {
+    if (storedChessGame) return storedChessGame;
+    if (!projectId || !currentProject) return null;
+    return createDefaultChessGameDefinition(projectId, currentProject.name);
+  }, [storedChessGame, projectId, currentProject]);
 
   // 2. Derive canonical PlatformerGameDefinition using Phase 10 architecture
   const gameDefinition = useMemo(() => {
@@ -254,6 +269,15 @@ export function GamePage() {
     setHistory([]);
   }, []);
 
+  const handleChessDefinitionChange = useCallback(
+    (def: ChessGameDefinition) => {
+      if (projectId) {
+        setProjectChessGame(projectId, def);
+      }
+    },
+    [projectId, setProjectChessGame],
+  );
+
   if (projectId && !currentProject) {
     return <ProjectNotFoundState projectId={projectId} />;
   }
@@ -262,7 +286,19 @@ export function GamePage() {
     return null;
   }
 
-  // Phase 11: If recognized as an extension point game (e.g. Chess, Ludo) without a playable engine yet
+  // Phase 12: If effective game type is Chess, render ChessGameStage
+  if (effectiveGameType === "chess" && activeChessGame) {
+    return (
+      <ChessGameStage
+        initialDefinition={activeChessGame}
+        onDefinitionChange={handleChessDefinitionChange}
+        projectId={projectId}
+        projectName={currentProject.name}
+      />
+    );
+  }
+
+  // Phase 11/12: If recognized as an extension point game (e.g. Ludo, Pool) without a playable engine yet
   if (!engineResult.success) {
     return (
       <div className="flex h-screen flex-col items-center justify-center bg-slate-900 p-6 text-center text-slate-100">

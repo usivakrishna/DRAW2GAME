@@ -34,7 +34,8 @@ describe("Phase 10: Universal 2D Game Architecture", () => {
   describe("1. GameDefinition & GameType Model", () => {
     it("identifies supported and extension game types correctly", () => {
       expect(isSupportedGameType("platformer")).toBe(true);
-      expect(isSupportedGameType("chess")).toBe(false);
+      expect(isSupportedGameType("chess")).toBe(true);
+      expect(isSupportedGameType("ludo")).toBe(false);
       expect(isSupportedGameType("unknown")).toBe(false);
 
       expect(isKnownGameType("platformer")).toBe(true);
@@ -50,8 +51,9 @@ describe("Phase 10: Universal 2D Game Architecture", () => {
 
     it("verifies supported and extension type constants", () => {
       expect(SUPPORTED_GAME_TYPES).toContain("platformer");
-      expect(EXTENSION_GAME_TYPES.length).toBeGreaterThanOrEqual(8);
-      expect(EXTENSION_GAME_TYPES).toContain("chess");
+      expect(SUPPORTED_GAME_TYPES).toContain("chess");
+      expect(EXTENSION_GAME_TYPES.length).toBeGreaterThanOrEqual(7);
+      expect(EXTENSION_GAME_TYPES).toContain("ludo");
       expect(EXTENSION_GAME_TYPES).toContain("pool");
     });
   });
@@ -171,12 +173,22 @@ describe("Phase 10: Universal 2D Game Architecture", () => {
     });
 
     it("returns explicit failure for extension point game types", () => {
-      const result = GameEngineFactory.createEngine("chess");
+      const result = GameEngineFactory.createEngine("ludo");
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.isExtensionPoint).toBe(true);
-        expect(result.requestedType).toBe("chess");
+        expect(result.requestedType).toBe("ludo");
         expect(result.error).toContain("extension point");
+      }
+    });
+
+    it("instantiates ChessEngine for gameType 'chess'", () => {
+      const result = GameEngineFactory.createEngine("chess");
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.gameType).toBe("chess");
+        expect(result.engine.gameType).toBe("chess");
+        expect(result.engine.engineId).toBe("chess-standard-board");
       }
     });
 

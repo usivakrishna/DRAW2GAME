@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
+import type { ChessGameDefinition } from "@/game/chess/chess-definition";
 import type { GameType } from "@/game/core/game-definition";
 import type { GameRecognitionRecord } from "@/game/recognition/types";
 import type { LevelDefinition } from "@/json/level-schema";
@@ -12,10 +13,12 @@ import { deleteProjectImageBlob } from "@/utils/image-storage";
 
 interface ProjectStore {
   activeProjectId: string | null;
+  clearProjectChessGame: (projectId: string) => void;
   clearProjectDetections: (projectId: string) => void;
   clearProjectLevel: (projectId: string) => void;
   clearProjectRecognition: (projectId: string) => void;
   createProject: (name: string) => ProjectSummary;
+  projectChessGames: Record<string, ChessGameDefinition>;
   projectDetections: Record<string, DetectionPrediction[]>;
   projectLevels: Record<string, LevelDefinition>;
   projectRecognitions: Record<string, GameRecognitionRecord>;
@@ -26,6 +29,7 @@ interface ProjectStore {
   renameProject: (projectId: string, name: string) => void;
   saveStudioDocument: (projectId: string, document: StudioDocument) => void;
   setActiveProject: (projectId: string | null) => void;
+  setProjectChessGame: (projectId: string, game: ChessGameDefinition) => void;
   setProjectDetections: (projectId: string, detections: DetectionPrediction[]) => void;
   setProjectLevel: (projectId: string, level: LevelDefinition) => void;
   setProjectRecognition: (projectId: string, record: GameRecognitionRecord) => void;
@@ -43,12 +47,20 @@ export const useProjectStore = create<ProjectStore>()(
   persist(
     (set) => ({
       activeProjectId: null,
+      projectChessGames: {},
       projectDetections: {},
       projectLevels: {},
       projectRecognitions: {},
       projects: [],
       projectUploads: {},
       studioDocuments: {},
+      clearProjectChessGame: (projectId) => {
+        set((state) => ({
+          projectChessGames: Object.fromEntries(
+            Object.entries(state.projectChessGames).filter(([id]) => id !== projectId),
+          ),
+        }));
+      },
       clearProjectDetections: (projectId) => {
         const timestamp = new Date().toISOString();
         set((state) => ({
@@ -120,6 +132,9 @@ export const useProjectStore = create<ProjectStore>()(
           ),
           projectLevels: Object.fromEntries(
             Object.entries(state.projectLevels).filter(([id]) => id !== projectId),
+          ),
+          projectChessGames: Object.fromEntries(
+            Object.entries(state.projectChessGames).filter(([id]) => id !== projectId),
           ),
           projectRecognitions: Object.fromEntries(
             Object.entries(state.projectRecognitions).filter(([id]) => id !== projectId),
@@ -263,10 +278,28 @@ export const useProjectStore = create<ProjectStore>()(
           },
         }));
       },
+      setProjectChessGame: (projectId, game) => {
+        const timestamp = new Date().toISOString();
+        set((state) => ({
+          projectChessGames: {
+            ...state.projectChessGames,
+            [projectId]: game,
+          },
+          projects: state.projects.map((project) =>
+            project.id === projectId
+              ? {
+                  ...project,
+                  stage: "generated" as const,
+                  updatedAt: timestamp,
+                }
+              : project,
+          ),
+        }));
+      },
       setUserSelectedGameType: (projectId, gameType) => {
         set((state) => {
           const existing = state.projectRecognitions[projectId];
-          const isPlatformer = gameType === "platformer";
+          const isPlayable = gameType === "platformer" || gameType === "chess";
           const updated: GameRecognitionRecord = existing
             ? {
                 ...existing,
@@ -277,7 +310,7 @@ export const useProjectStore = create<ProjectStore>()(
                 recognitionConfidence: 1.0,
                 recognitionEvidence: [`Manually selected as ${gameType}`],
                 recognitionSource: "manual",
-                recognitionWarnings: isPlatformer
+                recognitionWarnings: isPlayable
                   ? []
                   : [
                       `Gameplay engine for "${gameType}" is an architecture extension point coming in a future phase.`,
@@ -299,6 +332,7 @@ export const useProjectStore = create<ProjectStore>()(
       name: "draw2game-projects",
       partialize: (state) => ({
         activeProjectId: state.activeProjectId,
+        projectChessGames: state.projectChessGames,
         projectDetections: state.projectDetections,
         projectLevels: state.projectLevels,
         projectRecognitions: state.projectRecognitions,
