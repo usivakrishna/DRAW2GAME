@@ -1,5 +1,7 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
+import type { GameType } from "@/game/core/game-definition";
+import type { GameRecognitionRecord } from "@/game/recognition/types";
 import type { LevelDefinition } from "@/json/level-schema";
 import type { DetectionPrediction } from "@/types/detection";
 import type { ProjectStage, ProjectSummary } from "@/types/project";
@@ -12,9 +14,11 @@ interface ProjectStore {
   activeProjectId: string | null;
   clearProjectDetections: (projectId: string) => void;
   clearProjectLevel: (projectId: string) => void;
+  clearProjectRecognition: (projectId: string) => void;
   createProject: (name: string) => ProjectSummary;
   projectDetections: Record<string, DetectionPrediction[]>;
   projectLevels: Record<string, LevelDefinition>;
+  projectRecognitions: Record<string, GameRecognitionRecord>;
   projects: ProjectSummary[];
   projectUploads: Record<string, UploadedImageMetadata>;
   removeProject: (projectId: string) => void;
@@ -24,8 +28,10 @@ interface ProjectStore {
   setActiveProject: (projectId: string | null) => void;
   setProjectDetections: (projectId: string, detections: DetectionPrediction[]) => void;
   setProjectLevel: (projectId: string, level: LevelDefinition) => void;
+  setProjectRecognition: (projectId: string, record: GameRecognitionRecord) => void;
   setProjectStage: (projectId: string, stage: ProjectStage) => void;
   setProjectUpload: (projectId: string, metadata: UploadedImageMetadata) => void;
+  setUserSelectedGameType: (projectId: string, gameType: GameType) => void;
   studioDocuments: Record<string, StudioDocument>;
 }
 
@@ -39,6 +45,7 @@ export const useProjectStore = create<ProjectStore>()(
       activeProjectId: null,
       projectDetections: {},
       projectLevels: {},
+      projectRecognitions: {},
       projects: [],
       projectUploads: {},
       studioDocuments: {},
@@ -56,6 +63,13 @@ export const useProjectStore = create<ProjectStore>()(
                   updatedAt: timestamp,
                 }
               : project,
+          ),
+        }));
+      },
+      clearProjectRecognition: (projectId) => {
+        set((state) => ({
+          projectRecognitions: Object.fromEntries(
+            Object.entries(state.projectRecognitions).filter(([id]) => id !== projectId),
           ),
         }));
       },
@@ -106,6 +120,9 @@ export const useProjectStore = create<ProjectStore>()(
           ),
           projectLevels: Object.fromEntries(
             Object.entries(state.projectLevels).filter(([id]) => id !== projectId),
+          ),
+          projectRecognitions: Object.fromEntries(
+            Object.entries(state.projectRecognitions).filter(([id]) => id !== projectId),
           ),
           projects: state.projects.filter((project) => project.id !== projectId),
           projectUploads: Object.fromEntries(
@@ -206,6 +223,14 @@ export const useProjectStore = create<ProjectStore>()(
           ),
         }));
       },
+      setProjectRecognition: (projectId, record) => {
+        set((state) => ({
+          projectRecognitions: {
+            ...state.projectRecognitions,
+            [projectId]: record,
+          },
+        }));
+      },
       setProjectStage: (projectId, stage) => {
         const timestamp = new Date().toISOString();
 
@@ -238,6 +263,37 @@ export const useProjectStore = create<ProjectStore>()(
           },
         }));
       },
+      setUserSelectedGameType: (projectId, gameType) => {
+        set((state) => {
+          const existing = state.projectRecognitions[projectId];
+          const isPlatformer = gameType === "platformer";
+          const updated: GameRecognitionRecord = existing
+            ? {
+                ...existing,
+                userSelectedGameType: gameType,
+              }
+            : {
+                detectedGameType: "unknown",
+                recognitionConfidence: 1.0,
+                recognitionEvidence: [`Manually selected as ${gameType}`],
+                recognitionSource: "manual",
+                recognitionWarnings: isPlatformer
+                  ? []
+                  : [
+                      `Gameplay engine for "${gameType}" is an architecture extension point coming in a future phase.`,
+                    ],
+                recognizedAt: new Date().toISOString(),
+                userSelectedGameType: gameType,
+              };
+
+          return {
+            projectRecognitions: {
+              ...state.projectRecognitions,
+              [projectId]: updated,
+            },
+          };
+        });
+      },
     }),
     {
       name: "draw2game-projects",
@@ -245,6 +301,7 @@ export const useProjectStore = create<ProjectStore>()(
         activeProjectId: state.activeProjectId,
         projectDetections: state.projectDetections,
         projectLevels: state.projectLevels,
+        projectRecognitions: state.projectRecognitions,
         projects: state.projects,
         projectUploads: state.projectUploads,
         studioDocuments: state.studioDocuments,

@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { DetectionHeader } from "@/components/detection/DetectionHeader";
 import { DetectionOverlayCanvas } from "@/components/detection/DetectionOverlayCanvas";
 import { DetectionResultsList } from "@/components/detection/DetectionResultsList";
+import { GameRecognitionPanel } from "@/components/detection/GameRecognitionPanel";
 import { PreprocessingControls } from "@/components/detection/PreprocessingControls";
 import { ProjectPicker } from "@/components/drawing/ProjectPicker";
 import { ProjectNotFoundState } from "@/components/shared/ProjectNotFoundState";
@@ -330,6 +331,22 @@ export function DetectionPage() {
 
             {/* Right: Controls Panel */}
             <div className="space-y-6">
+              {projectId && (
+                <GameRecognitionPanel
+                  canvas={preprocessedCanvas}
+                  imageDimensions={
+                    imageElement
+                      ? {
+                          height: imageElement.naturalHeight,
+                          width: imageElement.naturalWidth,
+                        }
+                      : currentUpload?.dimensions
+                  }
+                  predictions={currentDetections}
+                  projectId={projectId}
+                />
+              )}
+
               <PreprocessingControls
                 isProcessing={isPreprocessing}
                 onApply={handleApplyPreprocessing}

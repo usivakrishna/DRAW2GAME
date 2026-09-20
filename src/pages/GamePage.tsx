@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { ArrowLeft, Clock, Compass } from "lucide-react";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { AIEditorPanel } from "@/components/game/AIEditorPanel";
 import { GameCanvas } from "@/components/game/GameCanvas";
 import { GameHUD } from "@/components/game/GameHUD";
@@ -11,9 +12,11 @@ import {
 } from "@/components/game/GameOverlays";
 import { NoLevelAlert } from "@/components/game/NoLevelAlert";
 import { ProjectNotFoundState } from "@/components/shared/ProjectNotFoundState";
+import { Button } from "@/components/ui/button";
 import { parseEditCommand } from "@/game-editor/command-parser";
 import { applyEditCommand } from "@/game-editor/level-modifier";
 import type { EditHistoryItem } from "@/game-editor/types";
+import { GameEngineFactory } from "@/game/core/game-engine-factory";
 import { levelDefinitionToGameDefinition } from "@/game/core/platformer-definition";
 import { loadRuntimeLevel } from "@/game/levels/level-loader";
 import type { PhaserGameBridge } from "@/game/PhaserGameBridge";
@@ -31,9 +34,11 @@ export function GamePage() {
   const activeProjectId = useProjectStore((state) => state.activeProjectId);
   const createProject = useProjectStore((state) => state.createProject);
   const projectLevels = useProjectStore((state) => state.projectLevels);
+  const projectRecognitions = useProjectStore((state) => state.projectRecognitions);
   const projects = useProjectStore((state) => state.projects);
   const setActiveProject = useProjectStore((state) => state.setActiveProject);
   const setProjectLevel = useProjectStore((state) => state.setProjectLevel);
+  const setUserSelectedGameType = useProjectStore((state) => state.setUserSelectedGameType);
 
   const bridgeRef = useRef<PhaserGameBridge | null>(null);
 
@@ -68,6 +73,19 @@ export function GamePage() {
 
   const currentProject = projects.find((p) => p.id === projectId);
   const levelDefinition = projectId ? projectLevels[projectId] : undefined;
+  const projectRecognition = projectId ? projectRecognitions[projectId] : undefined;
+
+  // Effective game type (manual user override takes precedence over auto-detected)
+  const effectiveGameType =
+    projectRecognition?.userSelectedGameType ??
+    (projectRecognition?.detectedGameType === "unknown"
+      ? "platformer"
+      : (projectRecognition?.detectedGameType ?? "platformer"));
+
+  // Check engine availability via GameEngineFactory
+  const engineResult = useMemo(() => {
+    return GameEngineFactory.createEngine(effectiveGameType);
+  }, [effectiveGameType]);
 
   // 2. Derive canonical PlatformerGameDefinition using Phase 10 architecture
   const gameDefinition = useMemo(() => {
@@ -242,6 +260,53 @@ export function GamePage() {
 
   if (!projectId || !currentProject) {
     return null;
+  }
+
+  // Phase 11: If recognized as an extension point game (e.g. Chess, Ludo) without a playable engine yet
+  if (!engineResult.success) {
+    return (
+      <div className="flex h-screen flex-col items-center justify-center bg-slate-900 p-6 text-center text-slate-100">
+        <div className="mx-auto max-w-md space-y-6 rounded-2xl border border-slate-800 bg-slate-950 p-8 shadow-2xl">
+          <div className="mx-auto grid size-16 place-items-center rounded-2xl bg-amber-500/10 text-amber-400 ring-8 ring-amber-500/5">
+            <Compass className="size-8" />
+          </div>
+
+          <div className="space-y-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-amber-400 border border-amber-500/20">
+              <Clock className="size-3.5" />
+              Recognized — Engine Coming Soon
+            </span>
+            <h2 className="text-2xl font-bold text-white">
+              {effectiveGameType.toUpperCase()} Game Engine
+            </h2>
+            <p className="text-sm text-slate-400 leading-relaxed">
+              This layout is recognized as a <strong>{effectiveGameType}</strong> game.
+              The dedicated gameplay engine for {effectiveGameType} is an architecture extension point coming in a future phase.
+            </p>
+          </div>
+
+          <div className="space-y-2 pt-2">
+            <Button
+              className="w-full gap-2 bg-emerald-600 hover:bg-emerald-500 text-white"
+              onClick={() => setUserSelectedGameType(projectId, "platformer")}
+            >
+              Switch to Platformer & Play Now
+            </Button>
+            <div className="flex gap-2">
+              <Button asChild className="flex-1" variant="outline">
+                <Link to={`/projects/${projectId}/detect`}>
+                  <ArrowLeft className="size-4 mr-1.5" />
+                  Detection
+                </Link>
+              </Button>
+              <Button asChild className="flex-1" variant="ghost">
+                <Link to="/dashboard">Dashboard</Link>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   // If no level exists for this project, show clear guidance
