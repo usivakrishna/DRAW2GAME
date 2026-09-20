@@ -23,6 +23,7 @@ import {
   EXTENSION_GAME_TYPES,
   type GameType,
 } from "@/game/core/game-definition";
+import { UniversalGameGenerator } from "@/game/generation";
 import { GameRecognizer } from "@/game/recognition/game-recognizer";
 import type { GameRecognitionRecord } from "@/game/recognition/types";
 import { Button } from "@/components/ui/button";
@@ -57,6 +58,9 @@ export function GameRecognitionPanel({
 }: GameRecognitionPanelProps) {
   const projectRecognitions = useProjectStore(
     (state) => state.projectRecognitions,
+  );
+  const setProjectGameDefinition = useProjectStore(
+    (state) => state.setProjectGameDefinition,
   );
   const setProjectRecognition = useProjectStore(
     (state) => state.setProjectRecognition,
@@ -100,6 +104,22 @@ export function GameRecognitionPanel({
   const isManuallyOverridden = Boolean(userOverride);
   const isPlayable = activeGameType === "platformer" || activeGameType === "chess";
   const isUnknown = activeGameType === "unknown";
+
+  // Phase 13: Universal Game Generation pipeline execution
+  const generationResult = useMemo(() => {
+    const targetType = isManuallyOverridden
+      ? userOverride
+      : (isUnknown ? undefined : activeGameType);
+
+    return UniversalGameGenerator.generateGame({
+      canvas,
+      predictions,
+      projectId,
+      source: "detection",
+      sourceDimensions: imageDimensions,
+      targetGameType: targetType,
+    });
+  }, [activeGameType, canvas, imageDimensions, isManuallyOverridden, isUnknown, predictions, projectId, userOverride]);
 
   const confidencePercent = isManuallyOverridden
     ? 100
@@ -316,6 +336,66 @@ export function GameRecognitionPanel({
         </select>
       </div>
 
+      {/* Phase 13: Universal Game Definition Architecture Status */}
+      <div className="rounded-xl border border-slate-200/90 bg-slate-50/80 p-3 space-y-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <Sparkles className="size-3.5 text-brand-600" />
+            <span className="text-xs font-semibold text-slate-800">
+              Universal Game Definition
+            </span>
+          </div>
+          {generationResult.success ? (
+            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-700 bg-emerald-100/70 px-2 py-0.5 rounded-full">
+              <CheckCircle2 className="size-3" />
+              Valid Definition
+            </span>
+          ) : generationResult.isExtensionPoint ? (
+            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-700 bg-amber-100/70 px-2 py-0.5 rounded-full">
+              <Clock className="size-3" />
+              Extension Point
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-rose-700 bg-rose-100/70 px-2 py-0.5 rounded-full">
+              <AlertCircle className="size-3" />
+              Blocked
+            </span>
+          )}
+        </div>
+
+        <p className="text-[11px] text-slate-600 leading-relaxed">
+          Target: <strong className="text-slate-800">{GAME_TYPE_LABELS[generationResult.gameType] || activeGameType}</strong>
+          {generationResult.metadata?.generatorId && ` via ${generationResult.metadata.generatorId}`}
+        </p>
+
+        {/* Generation Errors */}
+        {generationResult.errors.length > 0 && !generationResult.isExtensionPoint && (
+          <div className="rounded-lg bg-rose-50 border border-rose-200 p-2 text-[11px] text-rose-800 space-y-1">
+            <p className="font-semibold flex items-center gap-1 text-rose-900">
+              <AlertCircle className="size-3" />
+              Generation Issues:
+            </p>
+            <ul className="list-disc pl-4 space-y-0.5">
+              {generationResult.errors.map((err, i) => (
+                <li key={i}>{err.message}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* Generation Warnings */}
+        {generationResult.warnings.length > 0 && (
+          <div className="rounded-lg bg-slate-100/70 border border-slate-200 p-2 text-[11px] text-slate-600 space-y-0.5">
+            <p className="font-medium text-slate-700">Notices:</p>
+            <ul className="list-disc pl-4 space-y-0.5 text-[10px]">
+              {generationResult.warnings.map((w, i) => (
+                <li key={i}>{w.message}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+
       {/* Primary Action Button */}
       <div className="pt-1">
         {isPlayable ? (
@@ -323,6 +403,11 @@ export function GameRecognitionPanel({
             <Button
               asChild
               className="w-full gap-2 bg-emerald-600 hover:bg-emerald-500 text-white"
+              onClick={() => {
+                if (generationResult.success && generationResult.gameDefinition) {
+                  setProjectGameDefinition(projectId, generationResult.gameDefinition);
+                }
+              }}
               size="sm"
             >
               <Link to={`/projects/${projectId}/play`}>
@@ -335,6 +420,11 @@ export function GameRecognitionPanel({
             <Button
               asChild
               className="w-full gap-2 bg-emerald-600 hover:bg-emerald-500 text-white"
+              onClick={() => {
+                if (generationResult.success && generationResult.gameDefinition) {
+                  setProjectGameDefinition(projectId, generationResult.gameDefinition);
+                }
+              }}
               size="sm"
             >
               <Link to={`/projects/${projectId}/json`}>

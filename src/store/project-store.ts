@@ -1,7 +1,12 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import type { ChessGameDefinition } from "@/game/chess/chess-definition";
-import type { GameType } from "@/game/core/game-definition";
+import type { GameDefinition, GameType } from "@/game/core/game-definition";
+import {
+  gameDefinitionToLevelDefinition,
+  isPlatformerGameDefinition,
+  levelDefinitionToGameDefinition,
+} from "@/game/core/platformer-definition";
 import type { GameRecognitionRecord } from "@/game/recognition/types";
 import type { LevelDefinition } from "@/json/level-schema";
 import type { DetectionPrediction } from "@/types/detection";
@@ -15,11 +20,13 @@ interface ProjectStore {
   activeProjectId: string | null;
   clearProjectChessGame: (projectId: string) => void;
   clearProjectDetections: (projectId: string) => void;
+  clearProjectGameDefinition: (projectId: string) => void;
   clearProjectLevel: (projectId: string) => void;
   clearProjectRecognition: (projectId: string) => void;
   createProject: (name: string) => ProjectSummary;
   projectChessGames: Record<string, ChessGameDefinition>;
   projectDetections: Record<string, DetectionPrediction[]>;
+  projectGameDefinitions: Record<string, GameDefinition>;
   projectLevels: Record<string, LevelDefinition>;
   projectRecognitions: Record<string, GameRecognitionRecord>;
   projects: ProjectSummary[];
@@ -31,6 +38,7 @@ interface ProjectStore {
   setActiveProject: (projectId: string | null) => void;
   setProjectChessGame: (projectId: string, game: ChessGameDefinition) => void;
   setProjectDetections: (projectId: string, detections: DetectionPrediction[]) => void;
+  setProjectGameDefinition: (projectId: string, def: GameDefinition) => void;
   setProjectLevel: (projectId: string, level: LevelDefinition) => void;
   setProjectRecognition: (projectId: string, record: GameRecognitionRecord) => void;
   setProjectStage: (projectId: string, stage: ProjectStage) => void;
@@ -49,6 +57,7 @@ export const useProjectStore = create<ProjectStore>()(
       activeProjectId: null,
       projectChessGames: {},
       projectDetections: {},
+      projectGameDefinitions: {},
       projectLevels: {},
       projectRecognitions: {},
       projects: [],
@@ -58,6 +67,11 @@ export const useProjectStore = create<ProjectStore>()(
         set((state) => ({
           projectChessGames: Object.fromEntries(
             Object.entries(state.projectChessGames).filter(([id]) => id !== projectId),
+          ),
+          projectGameDefinitions: Object.fromEntries(
+            Object.entries(state.projectGameDefinitions).filter(
+              ([id, def]) => id !== projectId || def.gameType !== "chess",
+            ),
           ),
         }));
       },
@@ -78,6 +92,13 @@ export const useProjectStore = create<ProjectStore>()(
           ),
         }));
       },
+      clearProjectGameDefinition: (projectId) => {
+        set((state) => ({
+          projectGameDefinitions: Object.fromEntries(
+            Object.entries(state.projectGameDefinitions).filter(([id]) => id !== projectId),
+          ),
+        }));
+      },
       clearProjectRecognition: (projectId) => {
         set((state) => ({
           projectRecognitions: Object.fromEntries(
@@ -88,6 +109,11 @@ export const useProjectStore = create<ProjectStore>()(
       clearProjectLevel: (projectId) => {
         const timestamp = new Date().toISOString();
         set((state) => ({
+          projectGameDefinitions: Object.fromEntries(
+            Object.entries(state.projectGameDefinitions).filter(
+              ([id, def]) => id !== projectId || def.gameType !== "platformer",
+            ),
+          ),
           projectLevels: Object.fromEntries(
             Object.entries(state.projectLevels).filter(([id]) => id !== projectId),
           ),
@@ -127,14 +153,17 @@ export const useProjectStore = create<ProjectStore>()(
         void deleteProjectImageBlob(projectId);
         set((state) => ({
           activeProjectId: state.activeProjectId === projectId ? null : state.activeProjectId,
+          projectChessGames: Object.fromEntries(
+            Object.entries(state.projectChessGames).filter(([id]) => id !== projectId),
+          ),
           projectDetections: Object.fromEntries(
             Object.entries(state.projectDetections).filter(([id]) => id !== projectId),
           ),
+          projectGameDefinitions: Object.fromEntries(
+            Object.entries(state.projectGameDefinitions).filter(([id]) => id !== projectId),
+          ),
           projectLevels: Object.fromEntries(
             Object.entries(state.projectLevels).filter(([id]) => id !== projectId),
-          ),
-          projectChessGames: Object.fromEntries(
-            Object.entries(state.projectChessGames).filter(([id]) => id !== projectId),
           ),
           projectRecognitions: Object.fromEntries(
             Object.entries(state.projectRecognitions).filter(([id]) => id !== projectId),
@@ -220,9 +249,58 @@ export const useProjectStore = create<ProjectStore>()(
           ),
         }));
       },
+      setProjectGameDefinition: (projectId, def) => {
+        const timestamp = new Date().toISOString();
+        set((state) => {
+          const updatedGameDefs = {
+            ...state.projectGameDefinitions,
+            [projectId]: def,
+          };
+
+          let updatedLevels = state.projectLevels;
+          let updatedChessGames = state.projectChessGames;
+
+          if (def.gameType === "platformer" && isPlatformerGameDefinition(def)) {
+            try {
+              const level = gameDefinitionToLevelDefinition(def);
+              updatedLevels = {
+                ...state.projectLevels,
+                [projectId]: level,
+              };
+            } catch {
+              // Ignore parsing errors if definition payload is custom
+            }
+          } else if (def.gameType === "chess") {
+            updatedChessGames = {
+              ...state.projectChessGames,
+              [projectId]: def as ChessGameDefinition,
+            };
+          }
+
+          return {
+            projectChessGames: updatedChessGames,
+            projectGameDefinitions: updatedGameDefs,
+            projectLevels: updatedLevels,
+            projects: state.projects.map((project) =>
+              project.id === projectId
+                ? {
+                    ...project,
+                    stage: "generated" as const,
+                    updatedAt: timestamp,
+                  }
+                : project,
+            ),
+          };
+        });
+      },
       setProjectLevel: (projectId, level) => {
         const timestamp = new Date().toISOString();
+        const gameDef = levelDefinitionToGameDefinition(level, projectId);
         set((state) => ({
+          projectGameDefinitions: {
+            ...state.projectGameDefinitions,
+            [projectId]: gameDef,
+          },
           projectLevels: {
             ...state.projectLevels,
             [projectId]: level,
@@ -285,6 +363,10 @@ export const useProjectStore = create<ProjectStore>()(
             ...state.projectChessGames,
             [projectId]: game,
           },
+          projectGameDefinitions: {
+            ...state.projectGameDefinitions,
+            [projectId]: game,
+          },
           projects: state.projects.map((project) =>
             project.id === projectId
               ? {
@@ -334,6 +416,7 @@ export const useProjectStore = create<ProjectStore>()(
         activeProjectId: state.activeProjectId,
         projectChessGames: state.projectChessGames,
         projectDetections: state.projectDetections,
+        projectGameDefinitions: state.projectGameDefinitions,
         projectLevels: state.projectLevels,
         projectRecognitions: state.projectRecognitions,
         projects: state.projects,
