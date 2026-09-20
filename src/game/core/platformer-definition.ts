@@ -216,9 +216,21 @@ export function levelDefinitionToGameDefinition(
 
   return {
     assets: [],
+    capabilities: [
+      "physics",
+      "gravity",
+      "collision",
+      "movement",
+      "camera",
+      "scoring",
+      "hazards",
+      "collectibles",
+      "goals",
+      "rules",
+    ],
     engineConfig: {
       backgroundColor: "#020617",
-      engineId: "phaser-matter",
+      engineId: "universal-2d-engine",
       fps: 60,
       options: {
         debugPhysics: false,

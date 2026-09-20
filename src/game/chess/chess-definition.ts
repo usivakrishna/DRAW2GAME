@@ -246,7 +246,7 @@ export function createDefaultChessGameDefinition(
 
   const engineConfig: EngineConfig = {
     backgroundColor: "#1e293b",
-    engineId: "chess-engine",
+    engineId: "universal-2d-engine",
     fps: 60,
     renderer: "auto",
   };
@@ -255,6 +255,7 @@ export function createDefaultChessGameDefinition(
 
   return {
     assets: [] as GameAsset[],
+    capabilities: ["board", "grid", "turns", "rules", "scoring"],
     engineConfig,
     gameType: "chess",
     id,

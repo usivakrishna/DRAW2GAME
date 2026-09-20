@@ -15,7 +15,7 @@ import {
   levelDefinitionToGameDefinition,
   platformerEntitiesToGameObjects,
 } from "./platformer-definition";
-import { PlatformerEngine } from "./platformer-engine";
+import { UniversalGameEngine } from "@/game/runtime/universal-game-engine";
 import { applyEditCommand } from "@/game-editor/level-modifier";
 import { parseEditCommand } from "@/game-editor/command-parser";
 import {
@@ -110,7 +110,7 @@ describe("Phase 10: Universal 2D Game Architecture", () => {
       expect(gameDef.viewport.height).toBe(sampleLevel.viewport.height);
       expect(gameDef.typePayload?.physics.gravityY).toBe(sampleLevel.physics.gravityY);
       expect(gameDef.typePayload?.coins.length).toBe(sampleLevel.coins.length);
-      expect(gameDef.engineConfig.engineId).toBe("phaser-matter");
+      expect(gameDef.engineConfig.engineId).toBe("universal-2d-engine");
     });
 
     it("round-trips LevelDefinition -> PlatformerGameDefinition -> LevelDefinition accurately", () => {
@@ -161,14 +161,13 @@ describe("Phase 10: Universal 2D Game Architecture", () => {
     });
   });
 
-  describe("4. GameEngineFactory & Extensibility", () => {
-    it("instantiates PlatformerEngine for gameType 'platformer'", () => {
+  describe("4. GameEngineFactory & Universal Resolver", () => {
+    it("resolves UniversalGameEngine for gameType 'platformer'", () => {
       const result = GameEngineFactory.createEngine("platformer");
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.engine).toBeInstanceOf(PlatformerEngine);
-        expect(result.engine.gameType).toBe("platformer");
-        expect(result.engine.engineId).toBe("platformer-phaser-matter");
+        expect(result.engine).toBeInstanceOf(UniversalGameEngine);
+        expect(result.engine.engineId).toBe("universal-2d-engine");
       }
     });
 
@@ -182,13 +181,13 @@ describe("Phase 10: Universal 2D Game Architecture", () => {
       }
     });
 
-    it("instantiates ChessEngine for gameType 'chess'", () => {
+    it("resolves UniversalGameEngine for gameType 'chess'", () => {
       const result = GameEngineFactory.createEngine("chess");
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.gameType).toBe("chess");
-        expect(result.engine.gameType).toBe("chess");
-        expect(result.engine.engineId).toBe("chess-standard-board");
+        expect(result.engine).toBeInstanceOf(UniversalGameEngine);
+        expect(result.engine.engineId).toBe("universal-2d-engine");
       }
     });
 
@@ -203,26 +202,14 @@ describe("Phase 10: Universal 2D Game Architecture", () => {
     });
 
     it("supports registering custom game engines dynamically", () => {
-      const mockEngine = {
-        destroy: () => {},
-        engineId: "custom-test-engine",
-        gameType: "puzzle" as const,
-        initialize: () => {},
-        isInitialized: true,
-        isRunning: true,
-        load: () => {},
-        pause: () => {},
-        restart: () => {},
-        resume: () => {},
-        start: () => {},
-      };
+      const mockEngine = new UniversalGameEngine();
 
       GameEngineFactory.registerEngine("puzzle", () => mockEngine);
 
       const result = GameEngineFactory.createEngine("puzzle");
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.engine.engineId).toBe("custom-test-engine");
+        expect(result.engine).toBe(mockEngine);
       }
 
       GameEngineFactory.unregisterEngine("puzzle");
@@ -232,15 +219,15 @@ describe("Phase 10: Universal 2D Game Architecture", () => {
 
     it("createEngineOrThrow returns engine or throws cleanly", () => {
       const engine = GameEngineFactory.createEngineOrThrow("platformer");
-      expect(engine).toBeInstanceOf(PlatformerEngine);
+      expect(engine).toBeInstanceOf(UniversalGameEngine);
 
       expect(() => GameEngineFactory.createEngineOrThrow("carrom")).toThrow();
     });
   });
 
-  describe("5. PlatformerEngine Lifecycle Contract", () => {
+  describe("5. UniversalGameEngine Lifecycle Contract", () => {
     it("tracks initialization, start, pause, resume, and destroy states", () => {
-      const engine = new PlatformerEngine();
+      const engine = new UniversalGameEngine();
 
       expect(engine.isInitialized).toBe(false);
       expect(engine.isRunning).toBe(false);
@@ -249,6 +236,9 @@ describe("Phase 10: Universal 2D Game Architecture", () => {
       engine.initialize({ container });
 
       expect(engine.isInitialized).toBe(true);
+
+      engine.start();
+      expect(engine.isRunning).toBe(true);
 
       engine.pause();
       expect(engine.isRunning).toBe(false);

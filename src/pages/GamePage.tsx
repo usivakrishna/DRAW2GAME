@@ -310,14 +310,14 @@ export function GamePage() {
           <div className="space-y-2">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-amber-400 border border-amber-500/20">
               <Clock className="size-3.5" />
-              Recognized — Engine Coming Soon
+              Recognized — Runtime Capabilities Coming Soon
             </span>
             <h2 className="text-2xl font-bold text-white">
-              {effectiveGameType.toUpperCase()} Game Engine
+              {effectiveGameType.toUpperCase()} Game Type
             </h2>
             <p className="text-sm text-slate-400 leading-relaxed">
               This layout is recognized as a <strong>{effectiveGameType}</strong> game.
-              The dedicated gameplay engine for {effectiveGameType} is an architecture extension point coming in a future phase.
+              The runtime capabilities and rules for {effectiveGameType} are an architecture extension point coming in a future phase.
             </p>
           </div>
 

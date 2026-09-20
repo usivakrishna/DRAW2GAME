@@ -100,14 +100,14 @@ export class GameRecognizer {
         source: "manual",
         suggestedAction: isPlayable
           ? manualOverride === "chess"
-            ? "Chess engine is ready. Play chess now!"
-            : "Proceed to Level JSON generation and play your platformer game."
-          : `${manualOverride.toUpperCase()} engine is an extension point coming in a future phase.`,
+            ? "Universal Game Engine is ready. Play chess now!"
+            : "Universal Game Engine is ready. Proceed to Level JSON generation and play platformer now!"
+          : `${manualOverride.toUpperCase()} rules and data are an extension point coming in a future phase.`,
         supported: isPlayable,
         warnings: isPlayable
           ? []
           : [
-              `Gameplay engine for "${manualOverride}" is an architecture extension point coming in a future phase.`,
+              `Gameplay capabilities and rules for "${manualOverride}" are an architecture extension point coming in a future phase.`,
             ],
       };
     }
@@ -194,9 +194,9 @@ export class GameRecognizer {
       source: "structural",
       suggestedAction: isSupported
         ? topCandidate.gameType === "chess"
-          ? "Chess engine is ready! Click to play chess now."
-          : "Platformer engine is ready. Convert to Level JSON and play!"
-        : `${topCandidate.gameType.toUpperCase()} recognized! Note: gameplay engine is an extension point scheduled for future phases.`,
+          ? "Universal Game Engine is ready! Click to play chess now."
+          : "Universal Game Engine is ready. Convert to Level JSON and play!"
+        : `${topCandidate.gameType.toUpperCase()} recognized! Note: gameplay capabilities and rules are an extension point scheduled for future phases.`,
       supported: isSupported,
       warnings: topCandidate.warnings ?? [],
     };

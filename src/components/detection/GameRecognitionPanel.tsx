@@ -132,7 +132,7 @@ export function GameRecognitionPanel({
   const warnings = isManuallyOverridden
     ? !isPlayable
       ? [
-          `Gameplay engine for "${userOverride}" is an architecture extension point coming in a future phase.`,
+          `Gameplay capabilities and rules for "${userOverride}" are an architecture extension point coming in a future phase.`,
         ]
       : []
     : autoResult.warnings;
@@ -326,7 +326,7 @@ export function GameRecognitionPanel({
             <option value="platformer">2D Platformer (Playable)</option>
             <option value="chess">Chess (Playable)</option>
           </optgroup>
-          <optgroup label="Architecture Extension Points (Future Engines)">
+          <optgroup label="Architecture Extension Points (Future Capabilities)">
             {EXTENSION_GAME_TYPES.map((type) => (
               <option key={type} value={type}>
                 {GAME_TYPE_LABELS[type]} (Extension Point)

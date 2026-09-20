@@ -1,5 +1,5 @@
 /**
- * DRAW2GAME — Phase 13: Universal Game Generation Architecture
+ * DRAW2GAME — Universal Game Generation Architecture
  * Public API
  */
 
@@ -9,8 +9,5 @@ export * from "./validators/validation-types";
 export * from "./validators/generic-validator";
 export * from "./validators/platformer-validator";
 export * from "./validators/chess-validator";
-export * from "./generators/platformer-generator";
-export * from "./generators/chess-generator";
-export * from "./generators/extension-point-generator";
 export * from "./game-understanding";
 export * from "./universal-game-generator";

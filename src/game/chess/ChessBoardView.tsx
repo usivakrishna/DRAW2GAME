@@ -14,12 +14,12 @@ import {
   type ChessPayload,
   type ChessSquare,
 } from "./chess-definition";
-import type { ChessEngine } from "./chess-engine";
+import type { UniversalGameEngine } from "@/game/runtime/universal-game-engine";
 import { ChessPieceIcon } from "./ChessPieceIcon";
 import { ChessRules } from "./chess-rules";
 
 interface ChessBoardViewProps {
-  engine: ChessEngine;
+  engine: UniversalGameEngine;
   payload: ChessPayload;
 }
 

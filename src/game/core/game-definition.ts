@@ -93,6 +93,15 @@ export interface EngineConfig {
   renderer?: ("auto" | "canvas" | "webgl") | undefined;
 }
 
+import type { GameCapability } from "./game-capabilities";
+export type { GameCapability } from "./game-capabilities";
+export {
+  GAME_CAPABILITIES,
+  DEFAULT_GENRE_CAPABILITIES,
+  inferCapabilities,
+  isKnownCapability,
+} from "./game-capabilities";
+
 /**
  * Universal GameDefinition container
  */
@@ -101,6 +110,7 @@ export interface GenericGameDefinition<
   TPayload = unknown,
 > {
   assets: GameAsset[];
+  capabilities?: GameCapability[] | undefined;
   engineConfig: EngineConfig;
   gameType: TType;
   id: string;
@@ -115,3 +125,4 @@ export interface GenericGameDefinition<
 }
 
 export type GameDefinition = GenericGameDefinition;
+

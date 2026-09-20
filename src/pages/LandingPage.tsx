@@ -54,7 +54,7 @@ const workflowSteps = [
     step: "04",
     title: "Instant Play & AI Edit",
     description:
-      "Launch into a 60fps Phaser 3 platformer engine instantly. Use AI prompt modifiers to adjust gravity or jump heights in real time.",
+      "Launch into the 60fps Universal Game Engine instantly. Use AI prompt modifiers to adjust gravity or jump heights in real time.",
     icon: Gamepad2,
     color: "from-amber-500 to-orange-600",
     bgLight: "bg-amber-50 text-amber-600 border-amber-100",
@@ -79,7 +79,7 @@ const featureGrid = [
     icon: Gamepad2,
     title: "Phaser 3 & Matter.js Physics",
     description:
-      "Full 2D platformer engine complete with player movement, jump velocity, patrolling enemies, collectible coins, and hazard spikes.",
+      "Universal 2D physics capabilities complete with player movement, jump velocity, patrolling enemies, collectible coins, and hazard spikes.",
   },
   {
     icon: Sparkles,

@@ -1,25 +1,27 @@
 /**
- * Universal 2D Game Architecture - Game Engine Factory
+ * DRAW2GAME — Universal Game Engine Architecture
+ * Universal Game Engine Factory & Resolver
  *
- * Provides a type-safe registry and factory for resolving and instantiating
- * the appropriate GameEngine implementation based on GameType.
- *
- * Future genres (chess, ludo, pool, carrom, racing, puzzle, shooter, sports)
- * are represented as extension points that explicitly return typed error results
- * rather than silently falling back or fabricating mock implementations.
+ * Provides a universal runtime resolver for instantiating UniversalGameEngine.
+ * There are NO game-specific engine classes. A single UniversalGameEngine
+ * runs all supported games (platformer, chess, and future extension games)
+ * driven entirely by the GameDefinition's capabilities, rules, and data.
  */
 
 import {
   EXTENSION_GAME_TYPES,
   type ExtensionGameType,
+  type GameDefinition,
   type GameType,
+  isSupportedGameType,
 } from "./game-definition";
-import type { GameEngine } from "./game-engine";
-import { PlatformerEngine } from "./platformer-engine";
-import { ChessEngine } from "@/game/chess/chess-engine";
+import {
+  createUniversalGameEngine,
+  UniversalGameEngine,
+} from "@/game/runtime/universal-game-engine";
 
 export type EngineFactorySuccess = {
-  engine: GameEngine;
+  engine: UniversalGameEngine;
   gameType: GameType;
   success: true;
 };
@@ -33,41 +35,39 @@ export type EngineFactoryFailure = {
 
 export type EngineFactoryResult = EngineFactorySuccess | EngineFactoryFailure;
 
-export type EngineBuilder = () => GameEngine;
+export type EngineBuilder = () => UniversalGameEngine;
+
+export { createUniversalGameEngine };
 
 export class GameEngineFactory {
   private static customRegistry = new Map<string, EngineBuilder>();
 
   /**
-   * Registers a custom engine builder for a new or existing GameType.
-   * Useful for future plugin and engine additions.
+   * Registers a custom runtime builder (e.g. for testing or custom capability sets).
    */
   public static registerEngine(gameType: string, builder: EngineBuilder): void {
     this.customRegistry.set(gameType, builder);
   }
 
-  /**
-   * Unregisters a previously registered engine builder.
-   */
   public static unregisterEngine(gameType: string): void {
     this.customRegistry.delete(gameType);
   }
 
-  /**
-   * Clears custom registered engines (useful for testing).
-   */
   public static clearCustomEngines(): void {
     this.customRegistry.clear();
   }
 
   /**
-   * Resolves and instantiates the engine for the given GameType.
-   *
-   * - "platformer" -> Returns a live PlatformerEngine
-   * - extension point types -> Returns a typed failure explaining it is an extension point
-   * - unknown types -> Returns a typed failure
-   *
-   * Never silently falls back to a platformer engine.
+   * Creates or resolves a UniversalGameEngine for the given GameDefinition.
+   * Runtime systems are activated dynamically based on the definition's capabilities.
+   */
+  public static createEngineForDefinition(definition: GameDefinition): UniversalGameEngine {
+    return createUniversalGameEngine(definition);
+  }
+
+  /**
+   * Resolves a UniversalGameEngine for the given game type.
+   * Returns a universal runtime instance for supported game types ("platformer", "chess").
    */
   public static createEngine(gameType: GameType | string): EngineFactoryResult {
     // 1. Check custom registry first
@@ -80,41 +80,32 @@ export class GameEngineFactory {
       };
     }
 
-    // 2. Built-in platformer engine
-    if (gameType === "platformer") {
+    // 2. Supported game types run on UniversalGameEngine
+    if (isSupportedGameType(gameType)) {
       return {
-        engine: new PlatformerEngine(),
-        gameType: "platformer",
+        engine: new UniversalGameEngine(),
+        gameType,
         success: true,
       };
     }
 
-    // 3. Built-in chess engine (Phase 12)
-    if (gameType === "chess") {
-      return {
-        engine: new ChessEngine(),
-        gameType: "chess",
-        success: true,
-      };
-    }
-
-    // 4. Known extension types (Phase 11+ extension points)
+    // 3. Known extension types (rule / profile definitions in progress)
     if (
       (EXTENSION_GAME_TYPES as readonly string[]).includes(
         gameType as ExtensionGameType,
       )
     ) {
       return {
-        error: `Engine for "${gameType}" is not implemented yet. This is an extension point reserved for future phases.`,
+        error: `Game definition and rules for "${gameType}" are an architecture extension point reserved for future phases.`,
         isExtensionPoint: true,
         requestedType: gameType,
         success: false,
       };
     }
 
-    // 5. Unknown game type
+    // 4. Unknown game type
     return {
-      error: `Unsupported game type: "${gameType}". Supported types are "platformer", "chess".`,
+      error: `Unsupported game type: "${gameType}". Supported game types are "platformer", "chess".`,
       isExtensionPoint: false,
       requestedType: gameType,
       success: false,
@@ -122,9 +113,9 @@ export class GameEngineFactory {
   }
 
   /**
-   * Helper that throws if the engine cannot be created, otherwise returns the engine.
+   * Helper that throws if the engine cannot be created, otherwise returns the UniversalGameEngine.
    */
-  public static createEngineOrThrow(gameType: GameType | string): GameEngine {
+  public static createEngineOrThrow(gameType: GameType | string): UniversalGameEngine {
     const result = this.createEngine(gameType);
     if (!result.success) {
       throw new Error(result.error);
@@ -133,7 +124,7 @@ export class GameEngineFactory {
   }
 
   /**
-   * Lists all game types that currently have active engine implementations.
+   * Lists all game types that currently have active support in the universal runtime.
    */
   public static getAvailableGameTypes(): string[] {
     const types = ["platformer", "chess", ...Array.from(this.customRegistry.keys())];

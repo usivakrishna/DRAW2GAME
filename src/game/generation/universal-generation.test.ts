@@ -25,16 +25,14 @@ import {
 import { GameEngineFactory } from "@/game/core/game-engine-factory";
 import type { PlatformerGameDefinition } from "@/game/core/platformer-definition";
 import {
-  ChessGameGenerator,
   ChessValidator,
-  ExtensionPointGenerator,
   type GameDefinitionGenerator,
   type GameGenerationInput,
   GenericGameValidator,
-  PlatformerGameGenerator,
   PlatformerValidator,
   UniversalGameGenerator,
 } from "@/game/generation";
+import { UniversalGameEngine } from "@/game/runtime/universal-game-engine";
 import { GameRecognizer } from "@/game/recognition/game-recognizer";
 import { useProjectStore } from "@/store/project-store";
 
@@ -90,7 +88,9 @@ describe("Phase 13: Universal Game Generation Architecture", () => {
       expect(def.id).toBe("proj_plat_1");
       expect(def.name).toBe("Test Platformer");
       expect(def.gameType).toBe("platformer");
-      expect(def.engineConfig.engineId).toBe("phaser-matter");
+      expect(def.engineConfig.engineId).toBe("universal-2d-engine");
+      expect(def.capabilities).toContain("physics");
+      expect(def.capabilities).toContain("collision");
       expect(def.typePayload?.player).toBeDefined();
       expect(def.typePayload?.player.x).toBe(100);
       expect(def.typePayload?.platforms).toHaveLength(1);
@@ -302,16 +302,24 @@ describe("Phase 13: Universal Game Generation Architecture", () => {
     });
   });
 
-  // 5. Generator Selection & Registration
-  describe("5. Generator Selection & Custom Generators", () => {
-    it("selects correct generator based on target game type", () => {
-      const platGen = UniversalGameGenerator.findGenerator("platformer");
-      const chessGen = UniversalGameGenerator.findGenerator("chess");
-      const extGen = UniversalGameGenerator.findGenerator("ludo");
+  // 5. Universal Generator Extensibility & Custom Generators
+  describe("5. Universal Generator Extensibility & Custom Generators", () => {
+    it("generates platformer and chess without game-specific generator subclasses", () => {
+      const platResult = UniversalGameGenerator.generateGame({
+        projectId: "test_gen_plat",
+        source: "manual",
+        targetGameType: "platformer",
+      });
+      expect(platResult.gameType).toBe("platformer");
+      expect(platResult.gameDefinition?.capabilities).toContain("physics");
 
-      expect(platGen).toBeInstanceOf(PlatformerGameGenerator);
-      expect(chessGen).toBeInstanceOf(ChessGameGenerator);
-      expect(extGen).toBeInstanceOf(ExtensionPointGenerator);
+      const chessResult = UniversalGameGenerator.generateGame({
+        projectId: "test_gen_chess",
+        source: "manual",
+        targetGameType: "chess",
+      });
+      expect(chessResult.gameType).toBe("chess");
+      expect(chessResult.gameDefinition?.capabilities).toContain("board");
     });
 
     it("allows registering and unregistering custom generator", () => {
@@ -512,9 +520,9 @@ describe("Phase 13: Universal Game Generation Architecture", () => {
     });
   });
 
-  // 11. Platformer Engine Compatibility
-  describe("11. Platformer Engine Compatibility", () => {
-    it("creates live PlatformerEngine for generated platformer game definition", () => {
+  // 11. UniversalGameEngine Compatibility for Generated Platformer
+  describe("11. UniversalGameEngine Compatibility for Generated Platformer", () => {
+    it("creates live UniversalGameEngine for generated platformer game definition", () => {
       const input: GameGenerationInput = {
         predictions: [
           { boundingBox: { height: 48, width: 32, x: 100, y: 200 }, className: "player", confidence: 0.95, id: "p1" },
@@ -531,15 +539,15 @@ describe("Phase 13: Universal Game Generation Architecture", () => {
       const engineResult = GameEngineFactory.createEngine(genResult.gameType);
       expect(engineResult.success).toBe(true);
       if (engineResult.success) {
-        expect(engineResult.engine.gameType).toBe("platformer");
-        expect(engineResult.engine.engineId).toBe("platformer-phaser-matter");
+        expect(engineResult.engine).toBeInstanceOf(UniversalGameEngine);
+        expect(engineResult.engine.engineId).toBe("universal-2d-engine");
       }
     });
   });
 
-  // 12. Chess Engine Compatibility
-  describe("12. Chess Engine Compatibility", () => {
-    it("creates live ChessEngine for generated chess game definition", () => {
+  // 12. UniversalGameEngine Compatibility for Generated Chess
+  describe("12. UniversalGameEngine Compatibility for Generated Chess", () => {
+    it("creates live UniversalGameEngine for generated chess game definition", () => {
       const input: GameGenerationInput = {
         projectId: "proj_chess_engine",
         source: "manual",
@@ -552,8 +560,8 @@ describe("Phase 13: Universal Game Generation Architecture", () => {
       const engineResult = GameEngineFactory.createEngine(genResult.gameType);
       expect(engineResult.success).toBe(true);
       if (engineResult.success) {
-        expect(engineResult.engine.gameType).toBe("chess");
-        expect(engineResult.engine.engineId).toBe("chess-standard-board");
+        expect(engineResult.engine).toBeInstanceOf(UniversalGameEngine);
+        expect(engineResult.engine.engineId).toBe("universal-2d-engine");
       }
     });
   });

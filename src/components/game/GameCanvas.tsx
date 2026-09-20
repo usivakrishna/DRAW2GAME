@@ -1,8 +1,8 @@
 import { useEffect, useRef } from "react";
 import type { PlatformerGameDefinition } from "@/game/core/platformer-definition";
-import { PlatformerEngine } from "@/game/core/platformer-engine";
 import type { RuntimeLevelData } from "@/game/levels/level-loader";
 import { PhaserGameBridge } from "@/game/PhaserGameBridge";
+import { UniversalGameEngine } from "@/game/runtime/universal-game-engine";
 import type { GameStateManager } from "@/game/systems/game-state-manager";
 import type { StyleId, ThemeId } from "@/game/themes/theme-types";
 
@@ -11,7 +11,7 @@ interface GameCanvasProps {
   gameStateManager: GameStateManager;
   levelData: RuntimeLevelData;
   onBridgeReady?: ((bridge: PhaserGameBridge) => void) | undefined;
-  onEngineReady?: ((engine: PlatformerEngine) => void) | undefined;
+  onEngineReady?: ((engine: UniversalGameEngine) => void) | undefined;
   styleId: StyleId;
   themeId: ThemeId;
 }
@@ -27,7 +27,7 @@ export function GameCanvas({
 }: GameCanvasProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const bridgeRef = useRef<PhaserGameBridge | null>(null);
-  const engineRef = useRef<PlatformerEngine | null>(null);
+  const engineRef = useRef<UniversalGameEngine | null>(null);
 
   const onBridgeReadyRef = useRef(onBridgeReady);
   onBridgeReadyRef.current = onBridgeReady;
@@ -56,8 +56,8 @@ export function GameCanvas({
     }
 
     if (gameDefinition) {
-      // Use Phase 10 PlatformerEngine adapter
-      const engine = new PlatformerEngine();
+      // Use UniversalGameEngine runtime
+      const engine = new UniversalGameEngine();
       engine.initialize({
         container: containerRef.current,
         gameStateManager,
@@ -66,7 +66,7 @@ export function GameCanvas({
           themeId: themeIdRef.current,
         },
       });
-      engine.load(gameDefinition);
+      void engine.load(gameDefinition);
 
       engineRef.current = engine;
       const bridge = engine.getBridge();

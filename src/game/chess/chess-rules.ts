@@ -649,7 +649,7 @@ export class ChessRules {
       isCheck: opponentInCheck,
       isCheckmate: nextStatus === "checkmate",
       isEnPassant,
-      piece,
+      piece: { ...piece, hasMoved: true, square: to, type: finalType },
       promotedTo: actualPromotedTo,
       san,
       to,

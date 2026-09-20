@@ -21,7 +21,7 @@ import {
   type ChessGameDefinition,
   type ChessPayload,
 } from "./chess-definition";
-import { ChessEngine } from "./chess-engine";
+import { UniversalGameEngine } from "@/game/runtime/universal-game-engine";
 import { ChessBoardView } from "./ChessBoardView";
 import { ChessPieceIcon } from "./ChessPieceIcon";
 
@@ -39,9 +39,9 @@ export function ChessGameStage({
   projectName,
 }: ChessGameStageProps) {
   const [engine] = useState(() => {
-    const eng = new ChessEngine();
+    const eng = new UniversalGameEngine();
     eng.initialize({ container: document.createElement("div") });
-    eng.load(initialDefinition);
+    void eng.load(initialDefinition);
     eng.start();
     return eng;
   });
@@ -62,20 +62,22 @@ export function ChessGameStage({
 
   useEffect(() => {
     return engine.onStateChange((newPayload) => {
-      setPayload(newPayload);
-      if (onDefinitionChangeRef.current) {
+      setPayload(newPayload as ChessPayload);
+      if (onDefinitionChangeRef.current && initialDefRef.current) {
         onDefinitionChangeRef.current({
           ...initialDefRef.current,
-          typePayload: newPayload,
+          typePayload: newPayload as ChessPayload,
         });
       }
     });
   }, [engine]);
 
+  // Restart handler
   const handleRestart = useCallback(() => {
     engine.restart();
   }, [engine]);
 
+  // Flip board handler
   const handleFlipBoard = useCallback(() => {
     engine.flipBoard();
   }, [engine]);
@@ -85,7 +87,7 @@ export function ChessGameStage({
   const isCheck = payload.gameStatus === "check";
 
   return (
-    <div className="flex h-screen flex-col bg-slate-950 text-slate-100 overflow-hidden select-none">
+    <div className="flex h-screen w-full flex-col bg-slate-950 text-slate-100 select-none">
       {/* Top Header */}
       <header className="flex h-14 items-center justify-between border-b border-slate-800 bg-slate-900/90 px-4 sm:px-6 backdrop-blur">
         <div className="flex items-center gap-3">
@@ -102,7 +104,7 @@ export function ChessGameStage({
             <h1 className="text-sm font-semibold text-slate-100 flex items-center gap-2">
               <span>{projectName}</span>
               <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-400 border border-emerald-500/20">
-                Chess Engine
+                Universal Game Engine
               </span>
             </h1>
           </div>
