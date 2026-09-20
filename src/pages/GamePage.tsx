@@ -14,6 +14,7 @@ import { ProjectNotFoundState } from "@/components/shared/ProjectNotFoundState";
 import { parseEditCommand } from "@/game-editor/command-parser";
 import { applyEditCommand } from "@/game-editor/level-modifier";
 import type { EditHistoryItem } from "@/game-editor/types";
+import { levelDefinitionToGameDefinition } from "@/game/core/platformer-definition";
 import { loadRuntimeLevel } from "@/game/levels/level-loader";
 import type { PhaserGameBridge } from "@/game/PhaserGameBridge";
 import {
@@ -68,7 +69,13 @@ export function GamePage() {
   const currentProject = projects.find((p) => p.id === projectId);
   const levelDefinition = projectId ? projectLevels[projectId] : undefined;
 
-  // 2. Load runtime level data from LevelDefinition
+  // 2. Derive canonical PlatformerGameDefinition using Phase 10 architecture
+  const gameDefinition = useMemo(() => {
+    if (!levelDefinition) return null;
+    return levelDefinitionToGameDefinition(levelDefinition, projectId);
+  }, [levelDefinition, projectId]);
+
+  // 3. Load runtime level data from LevelDefinition
   const runtimeLevel = useMemo(() => {
     if (!levelDefinition) return null;
     return loadRuntimeLevel(levelDefinition);
@@ -271,6 +278,7 @@ export function GamePage() {
       {/* Main Game Stage Container */}
       <main className="relative flex-1 w-full overflow-hidden">
         <GameCanvas
+          gameDefinition={gameDefinition ?? undefined}
           gameStateManager={gameStateManager}
           levelData={runtimeLevel}
           onBridgeReady={handleBridgeReady}
