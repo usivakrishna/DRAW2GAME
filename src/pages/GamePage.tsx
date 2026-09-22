@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Clock, Compass } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { AIEditorPanel } from "@/components/game/AIEditorPanel";
+import { UniversalGameEditor } from "@/components/editor/UniversalGameEditor";
 import { GameCanvas } from "@/components/game/GameCanvas";
 import { GameHUD } from "@/components/game/GameHUD";
 import {
@@ -22,7 +23,11 @@ import {
 } from "@/game/chess/chess-definition";
 import { ChessGameStage } from "@/game/chess/ChessGameStage";
 import { GameEngineFactory } from "@/game/core/game-engine-factory";
-import { levelDefinitionToGameDefinition } from "@/game/core/platformer-definition";
+import {
+  gameDefinitionToLevelDefinition,
+  isPlatformerGameDefinition,
+  levelDefinitionToGameDefinition,
+} from "@/game/core/platformer-definition";
 import { loadRuntimeLevel } from "@/game/levels/level-loader";
 import type { PhaserGameBridge } from "@/game/PhaserGameBridge";
 import {
@@ -39,6 +44,7 @@ export function GamePage() {
   const activeProjectId = useProjectStore((state) => state.activeProjectId);
   const createProject = useProjectStore((state) => state.createProject);
   const projectChessGames = useProjectStore((state) => state.projectChessGames);
+  const projectGameDefinitions = useProjectStore((state) => state.projectGameDefinitions);
   const projectLevels = useProjectStore((state) => state.projectLevels);
   const projectRecognitions = useProjectStore((state) => state.projectRecognitions);
   const projects = useProjectStore((state) => state.projects);
@@ -53,6 +59,9 @@ export function GamePage() {
   const [selectedTheme, setSelectedTheme] = useState<ThemeId>("classic");
   const [selectedStyle, setSelectedStyle] = useState<StyleId>("clean");
   const [isControlsHelpOpen, setControlsHelpOpen] = useState(false);
+
+  // Phase 15: Universal Game Editor screen mode
+  const [pageMode, setPageMode] = useState<"play" | "edit">("play");
 
   // Phase 7: AI Editor state
   const [isAIEditorOpen, setAIEditorOpen] = useState(false);
@@ -79,7 +88,20 @@ export function GamePage() {
   }, [activeProjectId, createProject, navigate, projectId, projects, setActiveProject]);
 
   const currentProject = projects.find((p) => p.id === projectId);
-  const levelDefinition = projectId ? projectLevels[projectId] : undefined;
+  const storedGameDef = projectId ? projectGameDefinitions[projectId] : undefined;
+  const levelDefinition = useMemo(() => {
+    if (projectId && projectLevels[projectId]) {
+      return projectLevels[projectId];
+    }
+    if (storedGameDef && storedGameDef.gameType === "platformer" && isPlatformerGameDefinition(storedGameDef)) {
+      try {
+        return gameDefinitionToLevelDefinition(storedGameDef);
+      } catch {
+        return undefined;
+      }
+    }
+    return undefined;
+  }, [projectId, projectLevels, storedGameDef]);
   const projectRecognition = projectId ? projectRecognitions[projectId] : undefined;
 
   // Effective game type (manual user override takes precedence over auto-detected)
@@ -108,6 +130,16 @@ export function GamePage() {
     return levelDefinitionToGameDefinition(levelDefinition, projectId);
   }, [levelDefinition, projectId]);
 
+  // Phase 15: Derive active editable GameDefinition (platformer, chess, or generic)
+  const editableGameDefinition = useMemo(() => {
+    if (effectiveGameType === "chess") {
+      return activeChessGame ?? null;
+    }
+    if (storedGameDef) return storedGameDef;
+    if (gameDefinition) return gameDefinition;
+    return null;
+  }, [effectiveGameType, activeChessGame, storedGameDef, gameDefinition]);
+
   // 3. Load runtime level data from LevelDefinition
   const runtimeLevel = useMemo(() => {
     if (!levelDefinition) return null;
@@ -132,6 +164,7 @@ export function GamePage() {
 
   // Reset AI editor state when changing projects (project isolation)
   useEffect(() => {
+    setPageMode("play");
     setHistory([]);
     setLastError(null);
     setLastSuccess(null);
@@ -286,12 +319,31 @@ export function GamePage() {
     return null;
   }
 
+  // Phase 15: Universal Game Editor screen
+  if (pageMode === "edit" && editableGameDefinition) {
+    return (
+      <UniversalGameEditor
+        initialDefinition={editableGameDefinition}
+        onCancel={() => setPageMode("play")}
+        onPlayAgain={() => {
+          setPageMode("play");
+          if (bridgeRef.current) {
+            bridgeRef.current.restart();
+          }
+        }}
+        projectId={projectId}
+        projectName={currentProject.name}
+      />
+    );
+  }
+
   // Phase 12: If effective game type is Chess, render ChessGameStage
   if (effectiveGameType === "chess" && activeChessGame) {
     return (
       <ChessGameStage
         initialDefinition={activeChessGame}
         onDefinitionChange={handleChessDefinitionChange}
+        onOpenEditor={() => setPageMode("edit")}
         projectId={projectId}
         projectName={currentProject.name}
       />
@@ -363,6 +415,7 @@ export function GamePage() {
         isAIEditorOpen={isAIEditorOpen}
         levelName={runtimeLevel.name}
         onOpenControlsHelp={() => setControlsHelpOpen(true)}
+        onOpenEditor={() => setPageMode("edit")}
         onRestart={handleRestart}
         onStyleChange={setSelectedStyle}
         onThemeChange={setSelectedTheme}

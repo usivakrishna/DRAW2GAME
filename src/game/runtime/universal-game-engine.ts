@@ -24,6 +24,7 @@ import {
 import type {
   GameDefinition,
   GameObject,
+  GameRule,
   GameType,
 } from "@/game/core/game-definition";
 import type {
@@ -347,6 +348,18 @@ export class UniversalGameEngine implements GameEngine<GameDefinition> {
     return this.currentDefinition;
   }
 
+  public getGameDefinition(): GameDefinition | null {
+    return this.currentDefinition;
+  }
+
+  public isLoaded(): boolean {
+    return this.currentDefinition !== null;
+  }
+
+  public getRules(): GameRule[] {
+    return this.rules.getRules();
+  }
+
   public getPayload(): unknown {
     return this.currentDefinition?.typePayload ?? null;
   }
@@ -407,6 +420,15 @@ export class UniversalGameEngine implements GameEngine<GameDefinition> {
     }
 
     this.notifyStateChange();
+  }
+
+  public getLegalMoves(square: ChessSquare | string): string[] {
+    const payload = this.getChessPayload();
+    if (!payload) return [];
+    const sq = square as ChessSquare;
+    const piece = ChessRules.getPieceAt(payload.pieces, sq);
+    if (!piece) return [];
+    return ChessRules.getLegalMoves(piece, payload.pieces, payload.enPassantTargetSquare);
   }
 
   public makeMove(

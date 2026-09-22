@@ -140,10 +140,10 @@ export function UploadPreview({
             </span>
             <div>
               <p className="text-xs font-semibold text-slate-800">
-                Image ready for computer vision
+                Sketch ready for game pipeline
               </p>
               <p className="text-xs text-slate-500">
-                Processed & stored client-side. OpenCV.js and YOLOv8n detection pipeline will process this sketch in Phase 4.
+                Stored under project. OpenCV preprocessing, YOLOv8n detection, and Universal Game Engine generation ready.
               </p>
             </div>
           </div>
@@ -157,7 +157,7 @@ export function UploadPreview({
               >
                 <Link to={`/projects/${projectId}/detect`}>
                   <Sparkles aria-hidden="true" className="size-4" />
-                  Detect Level Elements
+                  Analyze Sketch & Detect
                 </Link>
               </Button>
             ) : (
@@ -166,7 +166,7 @@ export function UploadPreview({
                 size="sm"
               >
                 <Sparkles aria-hidden="true" className="size-4" />
-                Detect Level Elements
+                Analyze Sketch & Detect
               </Button>
             )}
           </div>

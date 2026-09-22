@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { Download, FileJson, FolderOpen, LayoutDashboard, Save, Trash2, UploadCloud } from "lucide-react";
+import { Download, FileJson, FolderOpen, LayoutDashboard, Save, Sparkles, Trash2, UploadCloud } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 
 interface StudioHeaderProps {
   canAct: boolean;
   onClear: () => void;
+  onDetectAndGenerate?: () => void;
   onExportJson: () => void;
   onExportPng: () => void;
   onLoad: () => void;
@@ -18,6 +19,7 @@ interface StudioHeaderProps {
 export function StudioHeader({
   canAct,
   onClear,
+  onDetectAndGenerate,
   onExportJson,
   onExportPng,
   onLoad,
@@ -74,10 +76,21 @@ export function StudioHeader({
             <FolderOpen aria-hidden="true" className="size-4" />
             Load
           </Button>
-          <Button disabled={!canAct} onClick={onSave} size="sm">
+          <Button disabled={!canAct} onClick={onSave} size="sm" variant="outline">
             <Save aria-hidden="true" className="size-4" />
             Save
           </Button>
+          {onDetectAndGenerate && (
+            <Button
+              className="gap-1.5 bg-gradient-to-r from-brand-600 to-indigo-600 text-white shadow-sm hover:from-brand-700 hover:to-indigo-700"
+              disabled={!canAct}
+              onClick={onDetectAndGenerate}
+              size="sm"
+            >
+              <Sparkles aria-hidden="true" className="size-4" />
+              Detect & Generate
+            </Button>
+          )}
           <Button disabled={!canAct} onClick={onExportPng} size="sm" variant="outline">
             <Download aria-hidden="true" className="size-4" />
             PNG

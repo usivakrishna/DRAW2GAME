@@ -213,7 +213,7 @@ export class UniversalGameGenerator {
     // 1. Resolve predictions: direct predictions, synthesized from objectCandidates, or default layout
     let predictions: DetectionPrediction[] = [];
     if (input.predictions && input.predictions.length > 0) {
-      predictions = input.predictions;
+      predictions = [...input.predictions];
     } else if (understanding.objectCandidates.length > 0) {
       predictions = understanding.objectCandidates.map((c, idx) => ({
         boundingBox: {
@@ -247,6 +247,56 @@ export class UniversalGameGenerator {
           id: "goal_flag",
         },
       ];
+    }
+
+    // Ensure essential playable platformer elements exist when synthesis is explicitly requested
+    const allowSynthesizedDefaults = Boolean(input.options?.synthesizeDefaults);
+    if (allowSynthesizedDefaults) {
+      const hasPlayer = predictions.some((p) => p.className === "player");
+      const hasPlatform = predictions.some((p) => p.className === "platform");
+      const hasGoal = predictions.some((p) => p.className === "goal");
+
+      if (!hasPlayer) {
+        predictions.unshift({
+          boundingBox: { height: 48, width: 32, x: 96, y: 384 },
+          className: "player",
+          confidence: 0.8,
+          id: "synthesized_player",
+        });
+        warnings.push({
+          code: "PLAYER_SYNTHESIZED",
+          message: "No player spawn detected in sketch: synthesized default player start location.",
+          recoverable: true,
+        });
+      }
+
+      if (!hasPlatform) {
+        predictions.push({
+          boundingBox: { height: 32, width: 800, x: 50, y: 550 },
+          className: "platform",
+          confidence: 0.8,
+          id: "synthesized_ground",
+        });
+        warnings.push({
+          code: "PLATFORM_SYNTHESIZED",
+          message: "No platform detected in sketch: synthesized ground support platform.",
+          recoverable: true,
+        });
+      }
+
+      if (!hasGoal) {
+        predictions.push({
+          boundingBox: { height: 64, width: 44, x: 750, y: 486 },
+          className: "goal",
+          confidence: 0.8,
+          id: "synthesized_goal",
+        });
+        warnings.push({
+          code: "GOAL_SYNTHESIZED",
+          message: "No goal flag detected in sketch: synthesized finish goal.",
+          recoverable: true,
+        });
+      }
     }
 
     // 2. Convert to LevelDefinition using adapted Phase 5 converter

@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type * as ort from "onnxruntime-web";
-import { ArrowRight, Loader2, UploadCloud } from "lucide-react";
+import { CheckCircle2, Loader2, Pencil, Play, UploadCloud } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { DetectionHeader } from "@/components/detection/DetectionHeader";
@@ -31,11 +31,14 @@ export function DetectionPage() {
   const createProject = useProjectStore((state) => state.createProject);
   const clearProjectDetections = useProjectStore((state) => state.clearProjectDetections);
   const projectDetections = useProjectStore((state) => state.projectDetections);
+  const projectGameDefinitions = useProjectStore((state) => state.projectGameDefinitions);
+  const projectRecognitions = useProjectStore((state) => state.projectRecognitions);
   const projects = useProjectStore((state) => state.projects);
   const projectUploads = useProjectStore((state) => state.projectUploads);
   const renameProject = useProjectStore((state) => state.renameProject);
   const setActiveProject = useProjectStore((state) => state.setActiveProject);
   const setProjectDetections = useProjectStore((state) => state.setProjectDetections);
+  const setProjectUpload = useProjectStore((state) => state.setProjectUpload);
 
   // Local state
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
@@ -69,6 +72,18 @@ export function DetectionPage() {
   const currentProject = projects.find((p) => p.id === projectId);
   const currentUpload = projectId ? projectUploads[projectId] : undefined;
   const currentDetections = (projectId ? projectDetections[projectId] : undefined) ?? [];
+  const currentRecognition = projectId ? projectRecognitions[projectId] : undefined;
+  const currentGameDefinition = projectId ? projectGameDefinitions[projectId] : undefined;
+
+  const resolvedImageDimensions = useMemo(() => {
+    if (imageElement) {
+      return {
+        height: imageElement.naturalHeight,
+        width: imageElement.naturalWidth,
+      };
+    }
+    return currentUpload?.dimensions;
+  }, [imageElement, currentUpload?.dimensions]);
 
   // 1. Auto-redirect if missing projectId
   useEffect(() => {
@@ -159,6 +174,17 @@ export function DetectionPage() {
             setBlobUrl(url);
             setImageElement(img);
             setIsLoadingImage(false);
+
+            const existingUpload = useProjectStore.getState().projectUploads[projectId];
+            if (!existingUpload) {
+              setProjectUpload(projectId, {
+                dimensions: { height: img.naturalHeight, width: img.naturalWidth },
+                fileName: "project-sketch.png",
+                fileSize: blob.size,
+                mimeType: blob.type || "image/png",
+                uploadedAt: new Date().toISOString(),
+              });
+            }
           };
 
           img.onerror = () => {
@@ -186,7 +212,7 @@ export function DetectionPage() {
         URL.revokeObjectURL(currentBlobUrlRef.current);
       }
     };
-  }, [projectId]);
+  }, [projectId, setProjectUpload]);
 
   // 5. Preprocessing handler
   const handleApplyPreprocessing = useCallback(async () => {
@@ -295,83 +321,145 @@ export function DetectionPage() {
             <Loader2 aria-hidden="true" className="size-10 animate-spin text-brand-600" />
             <p className="text-sm font-medium text-slate-600">Loading project sketch...</p>
           </div>
-        ) : !imageElement || !currentUpload ? (
-          /* Empty state: prompt to upload sketch first */
+        ) : !imageElement ? (
+          /* Empty state: prompt to draw in studio or upload sketch */
           <div className="max-w-md mx-auto py-16 text-center space-y-4">
             <div className="mx-auto flex size-16 items-center justify-center rounded-2xl bg-brand-50 text-brand-600 ring-8 ring-brand-50/50">
               <UploadCloud className="size-8" />
             </div>
             <div className="space-y-1">
               <h2 className="text-lg font-semibold text-slate-900">
-                No sketch uploaded yet
+                No sketch found for this project
               </h2>
               <p className="text-sm text-slate-500">
-                Upload a hand-drawn level sketch first before running computer vision preprocessing and detection.
+                Draw a game sketch in the Drawing Studio or upload an image to start computer vision detection and game generation.
               </p>
             </div>
-            <Button asChild className="gap-2">
-              <Link to={`/projects/${projectId}/upload`}>
-                Go to Upload
-                <ArrowRight className="size-4" />
-              </Link>
-            </Button>
+            <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+              <Button asChild className="gap-2">
+                <Link to={`/projects/${projectId}/studio`}>
+                  <Pencil className="size-4" />
+                  Draw in Studio
+                </Link>
+              </Button>
+              <Button asChild className="gap-2" variant="outline">
+                <Link to={`/projects/${projectId}/upload`}>
+                  <UploadCloud className="size-4" />
+                  Upload Sketch
+                </Link>
+              </Button>
+            </div>
           </div>
         ) : (
-          /* Main two-column detection interface */
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] xl:grid-cols-[minmax(0,1fr)_25rem]">
-            {/* Left: Image, Preprocessed View, and Detection Overlays */}
-            <div className="space-y-6">
-              <DetectionOverlayCanvas
-                imageElement={imageElement}
-                originalBlobUrl={blobUrl}
-                predictions={currentDetections}
-                preprocessedCanvas={preprocessedCanvas}
-              />
+          <div className="space-y-6">
+            {/* Pipeline Status Stepper Bar */}
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs">
+                  <div className="flex items-center gap-1.5 font-medium text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
+                    <CheckCircle2 className="size-3.5" />
+                    <span>1. Sketch Loaded</span>
+                  </div>
+                  <span className="text-slate-300">→</span>
+                  <div className={`flex items-center gap-1.5 font-medium px-2.5 py-1 rounded-lg border ${
+                    stepsApplied.length > 1
+                      ? "text-emerald-700 bg-emerald-50 border-emerald-200"
+                      : "text-slate-600 bg-slate-50 border-slate-200"
+                  }`}>
+                    <span>2. OpenCV: {stepsApplied.length > 1 ? `${stepsApplied.length - 1} Filters` : "Ready"}</span>
+                  </div>
+                  <span className="text-slate-300">→</span>
+                  <div className={`flex items-center gap-1.5 font-medium px-2.5 py-1 rounded-lg border ${
+                    currentDetections.length > 0
+                      ? "text-emerald-700 bg-emerald-50 border-emerald-200"
+                      : "text-slate-600 bg-slate-50 border-slate-200"
+                  }`}>
+                    <span>3. Detection: {currentDetections.length > 0 ? `${currentDetections.length} Objects` : "Pending"}</span>
+                  </div>
+                  <span className="text-slate-300">→</span>
+                  <div className={`flex items-center gap-1.5 font-medium px-2.5 py-1 rounded-lg border ${
+                    currentRecognition?.userSelectedGameType || (currentRecognition?.detectedGameType && currentRecognition.detectedGameType !== "unknown")
+                      ? "text-emerald-700 bg-emerald-50 border-emerald-200"
+                      : "text-amber-700 bg-amber-50 border-amber-200"
+                  }`}>
+                    <span>
+                      4. Genre: {currentRecognition?.userSelectedGameType
+                        ? `${currentRecognition.userSelectedGameType} (Manual)`
+                        : currentRecognition?.detectedGameType && currentRecognition.detectedGameType !== "unknown"
+                          ? `${currentRecognition.detectedGameType} (${Math.round(currentRecognition.recognitionConfidence * 100)}%)`
+                          : "Uncertain"}
+                    </span>
+                  </div>
+                  <span className="text-slate-300">→</span>
+                  <div className={`flex items-center gap-1.5 font-medium px-2.5 py-1 rounded-lg border ${
+                    currentGameDefinition
+                      ? "text-emerald-700 bg-emerald-50 border-emerald-200"
+                      : "text-slate-600 bg-slate-50 border-slate-200"
+                  }`}>
+                    <span>5. Definition: {currentGameDefinition ? "Generated" : "Ready to Build"}</span>
+                  </div>
+                </div>
+
+                {currentGameDefinition && (
+                  <Button asChild className="gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold" size="sm">
+                    <Link to={`/projects/${projectId}/play`}>
+                      <Play className="size-3.5 fill-current" />
+                      Play Game
+                    </Link>
+                  </Button>
+                )}
+              </div>
             </div>
 
-            {/* Right: Controls Panel */}
-            <div className="space-y-6">
-              {projectId && (
-                <GameRecognitionPanel
-                  canvas={preprocessedCanvas}
-                  imageDimensions={
-                    imageElement
-                      ? {
-                          height: imageElement.naturalHeight,
-                          width: imageElement.naturalWidth,
-                        }
-                      : currentUpload?.dimensions
-                  }
+            {/* Main two-column detection interface */}
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] xl:grid-cols-[minmax(0,1fr)_25rem]">
+              {/* Left: Image, Preprocessed View, and Detection Overlays */}
+              <div className="space-y-6">
+                <DetectionOverlayCanvas
+                  imageElement={imageElement}
+                  originalBlobUrl={blobUrl}
+                  predictions={currentDetections}
+                  preprocessedCanvas={preprocessedCanvas}
+                />
+              </div>
+
+              {/* Right: Controls Panel */}
+              <div className="space-y-6">
+                {projectId && (
+                  <GameRecognitionPanel
+                    canvas={preprocessedCanvas}
+                    imageDimensions={resolvedImageDimensions}
+                    predictions={currentDetections}
+                    projectId={projectId}
+                  />
+                )}
+
+                <PreprocessingControls
+                  isProcessing={isPreprocessing}
+                  onApply={handleApplyPreprocessing}
+                  onOptionsChange={setPreprocessingOptions}
+                  onReset={handleResetPreprocessing}
+                  onRetryOpenCv={initOpenCv}
+                  openCvError={openCvError}
+                  openCvStatus={openCvStatus}
+                  options={preprocessingOptions}
+                  stepsApplied={stepsApplied}
+                />
+
+                <DetectionResultsList
+                  confidenceThreshold={confidenceThreshold}
+                  iouThreshold={iouThreshold}
+                  isDetecting={isDetecting}
+                  modelMessage={modelMessage}
+                  modelStatus={modelStatus}
+                  onClearDetections={handleClearDetections}
+                  onConfidenceChange={setConfidenceThreshold}
+                  onIouChange={setIouThreshold}
+                  onRunDetection={handleRunDetection}
                   predictions={currentDetections}
                   projectId={projectId}
                 />
-              )}
-
-              <PreprocessingControls
-                isProcessing={isPreprocessing}
-                onApply={handleApplyPreprocessing}
-                onOptionsChange={setPreprocessingOptions}
-                onReset={handleResetPreprocessing}
-                onRetryOpenCv={initOpenCv}
-                openCvError={openCvError}
-                openCvStatus={openCvStatus}
-                options={preprocessingOptions}
-                stepsApplied={stepsApplied}
-              />
-
-              <DetectionResultsList
-                confidenceThreshold={confidenceThreshold}
-                iouThreshold={iouThreshold}
-                isDetecting={isDetecting}
-                modelMessage={modelMessage}
-                modelStatus={modelStatus}
-                onClearDetections={handleClearDetections}
-                onConfidenceChange={setConfidenceThreshold}
-                onIouChange={setIouThreshold}
-                onRunDetection={handleRunDetection}
-                predictions={currentDetections}
-                projectId={projectId}
-              />
+              </div>
             </div>
           </div>
         )}

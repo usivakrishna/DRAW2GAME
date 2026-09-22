@@ -56,6 +56,9 @@ export function GameRecognitionPanel({
   predictions,
   projectId,
 }: GameRecognitionPanelProps) {
+  const projectGameDefinitions = useProjectStore(
+    (state) => state.projectGameDefinitions,
+  );
   const projectRecognitions = useProjectStore(
     (state) => state.projectRecognitions,
   );
@@ -69,35 +72,61 @@ export function GameRecognitionPanel({
     (state) => state.setUserSelectedGameType,
   );
 
+  const currentGameDefinition = projectGameDefinitions[projectId];
   const savedRecord = projectRecognitions[projectId];
   const userOverride = savedRecord?.userSelectedGameType;
+
+  const dimWidth = imageDimensions?.width;
+  const dimHeight = imageDimensions?.height;
 
   // Run recognition whenever predictions or dimensions change
   const autoResult = useMemo(() => {
     return GameRecognizer.recognize({
       canvas,
-      imageDimensions,
+      imageDimensions:
+        dimWidth && dimHeight ? { height: dimHeight, width: dimWidth } : undefined,
       predictions,
     });
-  }, [canvas, imageDimensions, predictions]);
+  }, [canvas, dimHeight, dimWidth, predictions]);
 
-  // Sync auto-detected result to store if not user-overridden
+  // Sync auto-detected result to store if not user-overridden and if changed
   useEffect(() => {
-    if (!userOverride) {
-      const record: GameRecognitionRecord = {
-        detectedGameType: autoResult.gameType,
-        recognitionAlternatives: autoResult.alternatives,
-        recognitionConfidence: autoResult.confidence,
-        recognitionEvidence: autoResult.evidence,
-        recognitionSource: autoResult.source,
-        recognitionWarnings: autoResult.warnings,
-        recognizedAt: new Date().toISOString(),
-        suggestedAction: autoResult.suggestedAction,
-        userSelectedGameType: undefined,
-      };
-      setProjectRecognition(projectId, record);
+    if (userOverride) return;
+
+    if (
+      savedRecord &&
+      savedRecord.detectedGameType === autoResult.gameType &&
+      savedRecord.recognitionConfidence === autoResult.confidence &&
+      savedRecord.suggestedAction === autoResult.suggestedAction
+    ) {
+      return;
     }
-  }, [autoResult, projectId, setProjectRecognition, userOverride]);
+
+    const record: GameRecognitionRecord = {
+      detectedGameType: autoResult.gameType,
+      recognitionAlternatives: autoResult.alternatives,
+      recognitionConfidence: autoResult.confidence,
+      recognitionEvidence: autoResult.evidence,
+      recognitionSource: autoResult.source,
+      recognitionWarnings: autoResult.warnings,
+      recognizedAt: new Date().toISOString(),
+      suggestedAction: autoResult.suggestedAction,
+      userSelectedGameType: undefined,
+    };
+    setProjectRecognition(projectId, record);
+  }, [
+    autoResult.alternatives,
+    autoResult.confidence,
+    autoResult.evidence,
+    autoResult.gameType,
+    autoResult.source,
+    autoResult.suggestedAction,
+    autoResult.warnings,
+    projectId,
+    savedRecord,
+    setProjectRecognition,
+    userOverride,
+  ]);
 
   // Active game type (user override takes precedence)
   const activeGameType = userOverride ?? autoResult.gameType;
@@ -120,6 +149,12 @@ export function GameRecognitionPanel({
       targetGameType: targetType,
     });
   }, [activeGameType, canvas, imageDimensions, isManuallyOverridden, isUnknown, predictions, projectId, userOverride]);
+
+  useEffect(() => {
+    if (generationResult.success && generationResult.gameDefinition && !currentGameDefinition) {
+      setProjectGameDefinition(projectId, generationResult.gameDefinition);
+    }
+  }, [currentGameDefinition, generationResult.gameDefinition, generationResult.success, projectId, setProjectGameDefinition]);
 
   const confidencePercent = isManuallyOverridden
     ? 100
@@ -216,6 +251,19 @@ export function GameRecognitionPanel({
           </span>
         )}
       </div>
+
+      {/* Low confidence / Uncertainty notification */}
+      {(autoResult.confidence < 0.6 || isUnknown) && !isManuallyOverridden && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-3 text-xs text-amber-900 space-y-1.5">
+          <div className="flex items-center gap-1.5 font-semibold text-amber-900">
+            <AlertCircle className="size-4 text-amber-600 shrink-0" />
+            <span>Game type could not be confidently recognized ({confidencePercent}%)</span>
+          </div>
+          <p className="text-[11px] text-amber-800 leading-relaxed">
+            The visual evidence does not match a single genre with high confidence. Select your intended game type below to proceed with generation.
+          </p>
+        </div>
+      )}
 
       {/* Main Detection Result Display */}
       <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-3.5 space-y-2.5">
@@ -368,6 +416,23 @@ export function GameRecognitionPanel({
           {generationResult.metadata?.generatorId && ` via ${generationResult.metadata.generatorId}`}
         </p>
 
+        {/* Required Runtime Capabilities */}
+        {generationResult.gameDefinition?.capabilities && (
+          <div className="space-y-1 pt-1">
+            <p className="text-[10px] font-semibold text-slate-600 uppercase tracking-wider">Active Capabilities:</p>
+            <div className="flex flex-wrap gap-1">
+              {generationResult.gameDefinition.capabilities.map((cap) => (
+                <span
+                  className="inline-flex items-center rounded-md bg-slate-200/80 px-1.5 py-0.5 text-[10px] font-mono font-medium text-slate-800"
+                  key={cap}
+                >
+                  {cap}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Generation Errors */}
         {generationResult.errors.length > 0 && !generationResult.isExtensionPoint && (
           <div className="rounded-lg bg-rose-50 border border-rose-200 p-2 text-[11px] text-rose-800 space-y-1">
@@ -399,47 +464,68 @@ export function GameRecognitionPanel({
       {/* Primary Action Button */}
       <div className="pt-1">
         {isPlayable ? (
-          activeGameType === "chess" ? (
+          <div className="space-y-2">
             <Button
               asChild
-              className="w-full gap-2 bg-emerald-600 hover:bg-emerald-500 text-white"
-              onClick={() => {
-                if (generationResult.success && generationResult.gameDefinition) {
-                  setProjectGameDefinition(projectId, generationResult.gameDefinition);
-                }
-              }}
+              className="w-full gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold shadow-xs"
               size="sm"
             >
-              <Link to={`/projects/${projectId}/play`}>
+              <Link
+                onClick={() => {
+                  if (generationResult.success && generationResult.gameDefinition) {
+                    setProjectGameDefinition(projectId, generationResult.gameDefinition);
+                  }
+                }}
+                to={`/projects/${projectId}/play`}
+              >
                 <Sparkles className="size-4" />
-                <span>Play Chess Now</span>
+                <span>Play {GAME_TYPE_LABELS[activeGameType]} Now</span>
                 <ArrowRight className="size-4 ml-auto" />
               </Link>
             </Button>
-          ) : (
-            <Button
-              asChild
-              className="w-full gap-2 bg-emerald-600 hover:bg-emerald-500 text-white"
-              onClick={() => {
-                if (generationResult.success && generationResult.gameDefinition) {
-                  setProjectGameDefinition(projectId, generationResult.gameDefinition);
-                }
-              }}
-              size="sm"
-            >
-              <Link to={`/projects/${projectId}/json`}>
-                <Sparkles className="size-4" />
-                <span>Convert to Level JSON</span>
-                <ArrowRight className="size-4 ml-auto" />
-              </Link>
-            </Button>
-          )
+
+            {activeGameType === "platformer" && (
+              <Button
+                asChild
+                className="w-full text-xs text-slate-600 hover:text-slate-900"
+                onClick={() => {
+                  if (generationResult.success && generationResult.gameDefinition) {
+                    setProjectGameDefinition(projectId, generationResult.gameDefinition);
+                  }
+                }}
+                size="sm"
+                variant="ghost"
+              >
+                <Link to={`/projects/${projectId}/json`}>
+                  <span>Inspect / Edit Level JSON</span>
+                  <ArrowRight className="size-3.5 ml-1" />
+                </Link>
+              </Button>
+            )}
+          </div>
         ) : isUnknown ? (
-          <div className="rounded-lg bg-slate-50 p-2.5 text-center text-xs text-slate-500 border border-slate-200">
-            <p>
-              Layout is uncertain. You can add platforms to make it a Platformer,
-              or manually select <strong>2D Platformer</strong> above to generate a playable level.
+          <div className="rounded-xl bg-slate-50 p-3 text-center text-xs text-slate-600 border border-slate-200 space-y-2">
+            <p className="font-medium text-slate-800">
+              Select a game type to generate:
             </p>
+            <div className="flex gap-2 justify-center">
+              <Button
+                className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs h-8"
+                onClick={() => setUserSelectedGameType(projectId, "platformer")}
+                size="sm"
+                type="button"
+              >
+                2D Platformer
+              </Button>
+              <Button
+                className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs h-8"
+                onClick={() => setUserSelectedGameType(projectId, "chess")}
+                size="sm"
+                type="button"
+              >
+                Chess
+              </Button>
+            </div>
           </div>
         ) : (
           <div className="rounded-lg bg-amber-50 p-2.5 text-xs text-amber-800 border border-amber-200 space-y-1.5">

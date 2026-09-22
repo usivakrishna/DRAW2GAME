@@ -13,6 +13,7 @@ import { useProjectStore } from "@/store/project-store";
 import { DEFAULT_STUDIO_WORLD, type StudioTool } from "@/types/studio";
 import { getErrorMessage } from "@/utils/errors";
 import { downloadDataUrl, downloadTextFile } from "@/utils/download";
+import { saveProjectImageBlob } from "@/utils/image-storage";
 
 function getDownloadBaseName(projectName: string) {
   const normalizedName = projectName
@@ -24,14 +25,21 @@ function getDownloadBaseName(projectName: string) {
   return normalizedName || "draw2game-level";
 }
 
+async function dataUrlToBlob(dataUrl: string): Promise<Blob> {
+  const res = await fetch(dataUrl);
+  return await res.blob();
+}
+
 export function StudioPage() {
   const { projectId } = useParams();
   const navigate = useNavigate();
+  const activeProjectId = useProjectStore((state) => state.activeProjectId);
   const createProject = useProjectStore((state) => state.createProject);
   const projects = useProjectStore((state) => state.projects);
   const renameProject = useProjectStore((state) => state.renameProject);
   const saveStudioDocument = useProjectStore((state) => state.saveStudioDocument);
   const setActiveProject = useProjectStore((state) => state.setActiveProject);
+  const setProjectUpload = useProjectStore((state) => state.setProjectUpload);
   const studioDocuments = useProjectStore((state) => state.studioDocuments);
   const [activeTool, setActiveTool] = useState<StudioTool>("select");
   const [isProjectPickerOpen, setProjectPickerOpen] = useState(false);
@@ -112,9 +120,14 @@ export function StudioPage() {
     }
 
     createdProjectRef.current = true;
-    const project = createProject("Untitled level");
-    navigate("/projects/" + project.id + "/studio", { replace: true });
-  }, [createProject, navigate, projectId, setActiveProject]);
+    const targetId = activeProjectId ?? projects[0]?.id ?? null;
+    if (targetId) {
+      navigate("/projects/" + targetId + "/studio", { replace: true });
+    } else {
+      const project = createProject("Untitled level");
+      navigate("/projects/" + project.id + "/studio", { replace: true });
+    }
+  }, [activeProjectId, createProject, navigate, projectId, projects, setActiveProject]);
 
   useEffect(() => {
     if (!canvas || !projectId) {
@@ -180,7 +193,30 @@ export function StudioPage() {
     };
   }, [persistProjectCanvas]);
 
-  const handleSave = useCallback(() => {
+  const syncCanvasImageToStorage = useCallback(
+    async (targetProjectId: string) => {
+      const world = savedDocument?.world ?? DEFAULT_STUDIO_WORLD;
+      const dataUrl = exportPng(world);
+      if (!dataUrl) return;
+
+      try {
+        const blob = await dataUrlToBlob(dataUrl);
+        await saveProjectImageBlob(targetProjectId, blob);
+        setProjectUpload(targetProjectId, {
+          dimensions: { height: world.height, width: world.width },
+          fileName: `${getDownloadBaseName(currentProject?.name ?? "sketch")}-drawing.png`,
+          fileSize: blob.size,
+          mimeType: "image/png",
+          uploadedAt: new Date().toISOString(),
+        });
+      } catch (err) {
+        console.warn("Could not sync drawing to project image storage:", err);
+      }
+    },
+    [currentProject?.name, exportPng, savedDocument?.world, setProjectUpload],
+  );
+
+  const handleSave = useCallback(async () => {
     if (!projectId || !currentProject) {
       return;
     }
@@ -200,8 +236,34 @@ export function StudioPage() {
       version: 1,
       world: savedDocument?.world ?? DEFAULT_STUDIO_WORLD,
     });
+    await syncCanvasImageToStorage(projectId);
     toast.success("Project saved locally");
-  }, [currentProject, getCanvasJson, projectId, saveStudioDocument, savedDocument?.world]);
+  }, [currentProject, getCanvasJson, projectId, saveStudioDocument, savedDocument?.world, syncCanvasImageToStorage]);
+
+  const handleDetectAndGenerate = useCallback(async () => {
+    if (!projectId || !currentProject) {
+      return;
+    }
+
+    const canvasJson = getCanvasJson();
+
+    if (!canvasJson) {
+      toast.error("The drawing canvas is not ready yet.");
+      return;
+    }
+
+    const savedAt = new Date().toISOString();
+
+    saveStudioDocument(projectId, {
+      canvasJson,
+      savedAt,
+      version: 1,
+      world: savedDocument?.world ?? DEFAULT_STUDIO_WORLD,
+    });
+    await syncCanvasImageToStorage(projectId);
+    toast.success("Sketch saved. Loading detection & generation pipeline...");
+    navigate(`/projects/${projectId}/detect`);
+  }, [currentProject, getCanvasJson, navigate, projectId, saveStudioDocument, savedDocument?.world, syncCanvasImageToStorage]);
 
   useEffect(() => {
     handleSaveRef.current = handleSave;
@@ -327,6 +389,7 @@ export function StudioPage() {
       <StudioHeader
         canAct={canAct}
         onClear={handleClear}
+        onDetectAndGenerate={handleDetectAndGenerate}
         onExportJson={handleExportJson}
         onExportPng={handleExportPng}
         onLoad={() => setProjectPickerOpen(true)}

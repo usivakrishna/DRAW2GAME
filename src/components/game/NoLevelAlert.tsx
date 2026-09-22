@@ -1,4 +1,4 @@
-import { AlertCircle, ArrowRight, FileCode, LayoutDashboard, Paintbrush, UploadCloud } from "lucide-react";
+import { AlertCircle, ArrowRight, Compass, LayoutDashboard, Paintbrush, UploadCloud } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 
@@ -20,19 +20,19 @@ export function NoLevelAlert({ projectId, projectName }: NoLevelAlertProps) {
             {projectName}
           </span>
           <h2 className="mt-1 text-xl font-bold text-slate-900">
-            No Generated Level Available
+            No Generated Game Available
           </h2>
           <p className="mt-2 text-xs leading-relaxed text-slate-600">
-            A structured Level JSON is required to spawn and play this game.
-            Create or generate a level first from your drawing sketch or Phase 5 converter.
+            A Game Definition is required to run this game in the Universal Game Engine.
+            Run detection and generation on your sketch to build a playable level.
           </p>
         </div>
 
         <div className="flex flex-col gap-2.5 pt-2">
-          <Button asChild className="w-full gap-2">
-            <Link to={`/projects/${projectId}/json`}>
-              <FileCode className="size-4" />
-              <span>Go to Level JSON Editor</span>
+          <Button asChild className="w-full gap-2 bg-emerald-600 hover:bg-emerald-500 text-white">
+            <Link to={`/projects/${projectId}/detect`}>
+              <Compass className="size-4" />
+              <span>Go to Detection & Generation</span>
               <ArrowRight className="size-4 ml-auto" />
             </Link>
           </Button>

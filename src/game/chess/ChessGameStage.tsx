@@ -10,6 +10,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AlertCircle,
   ArrowLeft,
+  Pencil,
   RotateCcw,
   Sparkles,
   Trophy,
@@ -28,6 +29,7 @@ import { ChessPieceIcon } from "./ChessPieceIcon";
 interface ChessGameStageProps {
   initialDefinition: ChessGameDefinition;
   onDefinitionChange?: ((def: ChessGameDefinition) => void) | undefined;
+  onOpenEditor?: (() => void) | undefined;
   projectId: string;
   projectName: string;
 }
@@ -35,6 +37,7 @@ interface ChessGameStageProps {
 export function ChessGameStage({
   initialDefinition,
   onDefinitionChange,
+  onOpenEditor,
   projectId,
   projectName,
 }: ChessGameStageProps) {
@@ -58,7 +61,9 @@ export function ChessGameStage({
   const initialDefRef = useRef(initialDefinition);
   useEffect(() => {
     initialDefRef.current = initialDefinition;
-  }, [initialDefinition]);
+    void engine.load(initialDefinition);
+    setPayload(initialDefinition.typePayload ?? createDefaultChessGameDefinition(initialDefinition.id).typePayload!);
+  }, [engine, initialDefinition]);
 
   useEffect(() => {
     return engine.onStateChange((newPayload) => {
@@ -130,6 +135,18 @@ export function ChessGameStage({
               <AlertCircle className="size-3.5" />
               Check!
             </span>
+          )}
+
+          {onOpenEditor && (
+            <Button
+              className="h-8 gap-1.5 text-xs font-semibold border-indigo-500/40 bg-indigo-950/40 text-indigo-200 hover:bg-indigo-900/60 hover:text-white"
+              onClick={onOpenEditor}
+              size="sm"
+              variant="outline"
+            >
+              <Pencil className="size-3.5 text-indigo-300" />
+              <span>Edit Game</span>
+            </Button>
           )}
 
           <Button

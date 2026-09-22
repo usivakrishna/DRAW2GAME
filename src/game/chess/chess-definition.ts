@@ -269,3 +269,15 @@ export function createDefaultChessGameDefinition(
     viewport,
   };
 }
+
+/**
+ * Type predicate to check if an object is a ChessGameDefinition.
+ */
+export function isChessGameDefinition(
+  def: unknown,
+): def is ChessGameDefinition {
+  if (!def || typeof def !== "object") return false;
+  const candidate = def as Partial<ChessGameDefinition>;
+  return candidate.gameType === "chess" && typeof candidate.name === "string";
+}
+

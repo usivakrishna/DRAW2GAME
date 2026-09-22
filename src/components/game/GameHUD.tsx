@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   Palette,
   Pause,
+  Pencil,
   Play,
   RotateCcw,
   Sparkles,
@@ -23,6 +24,7 @@ interface GameHUDProps {
   isAIEditorOpen?: boolean;
   levelName: string;
   onOpenControlsHelp: () => void;
+  onOpenEditor?: () => void;
   onRestart: () => void;
   onStyleChange: (styleId: StyleId) => void;
   onThemeChange: (themeId: ThemeId) => void;
@@ -42,6 +44,7 @@ export function GameHUD({
   isAIEditorOpen,
   levelName,
   onOpenControlsHelp,
+  onOpenEditor,
   onRestart,
   onStyleChange,
   onThemeChange,
@@ -103,8 +106,21 @@ export function GameHUD({
         )}
       </div>
 
-      {/* Right: Theme / Style selectors, Pause, Restart, Help, AI Editor */}
+      {/* Right: Theme / Style selectors, Edit Game, Pause, Restart, Help, AI Editor */}
       <div className="flex flex-wrap items-center gap-2">
+        {/* Universal Game Editor Button */}
+        {onOpenEditor && (
+          <Button
+            className="h-8 gap-1.5 text-xs font-semibold border-indigo-500/40 bg-indigo-950/40 text-indigo-200 hover:bg-indigo-900/60 hover:text-white"
+            onClick={onOpenEditor}
+            size="sm"
+            variant="outline"
+          >
+            <Pencil className="size-3.5 text-indigo-300" />
+            <span>Edit Game</span>
+          </Button>
+        )}
+
         {/* AI Editor Toggle Button */}
         {onToggleAIEditor && (
           <Button
