@@ -67,11 +67,48 @@ export interface DetectionBoundingBox {
   y: number;
 }
 
+export type DetectionSource =
+  | "model"
+  | "opencv"
+  | "spatial-analysis"
+  | "heuristic"
+  | "user"
+  | "synthesized";
+
 export interface DetectionPrediction {
   boundingBox: DetectionBoundingBox;
+  category?: string | undefined;
+  center?: { x: number; y: number } | undefined;
   className: DetectionClass;
   confidence: number;
   id: string;
+  size?: { height: number; width: number } | undefined;
+  source?: DetectionSource | undefined;
+}
+
+/**
+ * Normalizes a DetectionPrediction ensuring center point and size are populated.
+ */
+export function normalizeDetectionPrediction(
+  pred: DetectionPrediction,
+  defaultSource: DetectionSource = "model",
+): DetectionPrediction {
+  const { boundingBox } = pred;
+  const center = pred.center ?? {
+    x: boundingBox.x + boundingBox.width / 2,
+    y: boundingBox.y + boundingBox.height / 2,
+  };
+  const size = pred.size ?? {
+    height: boundingBox.height,
+    width: boundingBox.width,
+  };
+  return {
+    ...pred,
+    category: pred.category ?? pred.className,
+    center,
+    size,
+    source: pred.source ?? defaultSource,
+  };
 }
 
 export interface PreprocessingOptions {

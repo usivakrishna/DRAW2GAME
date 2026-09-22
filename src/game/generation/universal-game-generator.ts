@@ -57,6 +57,7 @@ import type {
 import { ChessValidator } from "./validators/chess-validator";
 import { GenericGameValidator } from "./validators/generic-validator";
 import { PlatformerValidator } from "./validators/platformer-validator";
+import { UnderstandingValidator } from "./validators/understanding-validator";
 
 export class UniversalGameGenerator {
   private static customGenerators: GameDefinitionGenerator[] = [];
@@ -93,6 +94,33 @@ export class UniversalGameGenerator {
     // 1. Extract intermediate understanding
     const understanding: GameUnderstanding = GameUnderstandingExtractor.extract(input);
     const targetType = input.targetGameType ?? understanding.gameType;
+
+    // Validate semantic understanding model
+    const understandingVal = UnderstandingValidator.validate(understanding);
+    if (!understandingVal.isValid) {
+      return {
+        confidence: understanding.confidence,
+        errors: understandingVal.errors.map((err) => ({
+          blocking: true,
+          code: "UNDERSTANDING_VALIDATION_ERROR",
+          message: err,
+        })),
+        gameDefinition: null,
+        gameType: targetType,
+        isExtensionPoint: false,
+        metadata: {
+          generatedAt: new Date().toISOString(),
+          generatorId: "universal-generator",
+          validationDurationMs: Date.now() - startTime,
+        },
+        success: false,
+        warnings: understandingVal.warnings.map((w) => ({
+          code: "UNDERSTANDING_WARNING",
+          message: w,
+          recoverable: true,
+        })),
+      };
+    }
 
     // 2. Check for custom registered generator first
     const customGen = this.findGenerator(targetType);
@@ -335,6 +363,26 @@ export class UniversalGameGenerator {
       gameDefinition.metadata.source = input.source;
     }
 
+    // Merge inferred capabilities from GameUnderstanding
+    if (understanding.capabilities && understanding.capabilities.length > 0) {
+      const merged = Array.from(new Set([...(gameDefinition.capabilities ?? []), ...understanding.capabilities]));
+      gameDefinition.capabilities = merged;
+    }
+
+    // Include non-blocking diagnostics from GameUnderstanding
+    if (understanding.diagnostics) {
+      for (const diag of understanding.diagnostics) {
+        if (diag.severity === "warning" && !warnings.some((w) => w.code === diag.code)) {
+          warnings.push({
+            code: diag.code,
+            entityId: diag.entityId,
+            message: diag.message,
+            recoverable: true,
+          });
+        }
+      }
+    }
+
     // 4. Validate through GenericGameValidator
     const genericValidation = GenericGameValidator.validate(gameDefinition);
     for (const issue of genericValidation.issues) {
@@ -498,9 +546,13 @@ export class UniversalGameGenerator {
       themeId: "wooden",
     };
 
+    const mergedCaps = Array.from(
+      new Set(["board", "grid", "turns", "rules", "scoring", ...(understanding.capabilities ?? [])]),
+    );
+
     const gameDefinition: ChessGameDefinition = {
       assets: [] as GameAsset[],
-      capabilities: ["board", "grid", "turns", "rules", "scoring"],
+      capabilities: mergedCaps as ("board" | "grid" | "turns" | "rules" | "scoring")[],
       engineConfig: {
         backgroundColor: "#1e293b",
         engineId: "universal-2d-engine",

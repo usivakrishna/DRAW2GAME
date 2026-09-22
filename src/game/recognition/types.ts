@@ -3,8 +3,10 @@
  * Core Type Definitions & Interfaces
  */
 
+import type { GameCapability } from "@/game/core/game-capabilities";
 import type { GameType } from "@/game/core/game-definition";
 import type { DetectionPrediction } from "@/types/detection";
+import type { LayoutStructure, ObjectGroup, SpatialRelationship } from "./spatial-types";
 
 export type RecognizedGameType = GameType | "unknown";
 
@@ -23,6 +25,7 @@ export interface RecognitionCandidate {
 
 export interface GameRecognitionResult {
   alternatives?: Array<{ confidence: number; gameType: GameType }> | undefined;
+  capabilities?: GameCapability[] | undefined;
   confidence: number;
   evidence: string[];
   gameType: RecognizedGameType;
@@ -86,6 +89,11 @@ export interface StructuralFeatures {
   hasPlayerGoalPair: boolean;
   isNearSquare: boolean; // aspect ratio 0.85 - 1.15
   isNearDoubleSquare: boolean; // aspect ratio 1.7 - 2.3 (~2:1 table or 16:9 side scroller)
+
+  // Phase 16: Derived Spatial Structure
+  groups?: ObjectGroup[] | undefined;
+  layout?: LayoutStructure | undefined;
+  spatialRelationships?: SpatialRelationship[] | undefined;
 }
 
 /**

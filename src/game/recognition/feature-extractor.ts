@@ -7,6 +7,7 @@
  */
 
 import type { DetectionPrediction } from "@/types/detection";
+import { SpatialAnalyzer } from "./spatial-analyzer";
 import type { StructuralFeatures } from "./types";
 
 export interface FeatureExtractionInput {
@@ -141,6 +142,25 @@ export function extractStructuralFeatures(
     reticleDetected: false,
     verticalSegmentsCount,
   };
+
+  // Phase 16: Derive spatial relationships, groups, and layout if predictions exist
+  if (predictions.length > 0) {
+    const spatialRelationships = SpatialAnalyzer.analyzeRelationships(predictions);
+    const groups = SpatialAnalyzer.findGroups(predictions);
+    const layout = SpatialAnalyzer.classifyLayout(predictions, spatialRelationships, groups, { height, width });
+
+    defaultFeatures.spatialRelationships = spatialRelationships;
+    defaultFeatures.groups = groups;
+    defaultFeatures.layout = layout;
+
+    if (layout.type === "grid-board" || groups.some((g) => g.type === "grid")) {
+      defaultFeatures.discreteTilesDetected = true;
+      const gridGroup = groups.find((g) => g.type === "grid");
+      if (gridGroup && typeof gridGroup.properties?.totalCells === "number") {
+        defaultFeatures.gridCellsCount = Math.max(defaultFeatures.gridCellsCount, gridGroup.properties.totalCells);
+      }
+    }
+  }
 
   // Merge with custom signals if provided (e.g. from OpenCV or test fixtures)
   return {

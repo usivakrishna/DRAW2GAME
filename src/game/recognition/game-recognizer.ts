@@ -9,6 +9,7 @@
  * without fabricating fake AI predictions or cloud dependencies.
  */
 
+import { inferCapabilities } from "@/game/core/game-capabilities";
 import {
   type GameType,
   isSupportedGameType,
@@ -94,6 +95,7 @@ export class GameRecognizer {
       const isPlayable = isSupportedGameType(manualOverride);
       return {
         alternatives: [],
+        capabilities: inferCapabilities(manualOverride),
         confidence: 1.0,
         evidence: [`User explicitly selected ${manualOverride} game type`],
         gameType: manualOverride,
@@ -186,10 +188,20 @@ export class GameRecognizer {
       .filter((c) => c.confidence >= 0.20)
       .map((c) => ({ confidence: c.confidence, gameType: c.gameType }));
 
+    const mergedEvidence = [...topCandidate.evidence];
+    if (features.layout && features.layout.evidence.length > 0) {
+      for (const ev of features.layout.evidence) {
+        if (!mergedEvidence.includes(ev)) {
+          mergedEvidence.push(ev);
+        }
+      }
+    }
+
     return {
       alternatives,
+      capabilities: inferCapabilities(topCandidate.gameType),
       confidence: topCandidate.confidence,
-      evidence: topCandidate.evidence,
+      evidence: mergedEvidence,
       gameType: topCandidate.gameType,
       source: "structural",
       suggestedAction: isSupported

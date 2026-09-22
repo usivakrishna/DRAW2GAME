@@ -14,7 +14,10 @@ import {
   CheckCircle2,
   Clock,
   Compass,
+  Cpu,
   HelpCircle,
+  Layers,
+  Network,
   RotateCcw,
   Sparkles,
 } from "lucide-react";
@@ -24,6 +27,7 @@ import {
   type GameType,
 } from "@/game/core/game-definition";
 import { UniversalGameGenerator } from "@/game/generation";
+import { GameUnderstandingExtractor } from "@/game/generation/game-understanding";
 import { GameRecognizer } from "@/game/recognition/game-recognizer";
 import type { GameRecognitionRecord } from "@/game/recognition/types";
 import { Button } from "@/components/ui/button";
@@ -150,6 +154,30 @@ export function GameRecognitionPanel({
     });
   }, [activeGameType, canvas, imageDimensions, isManuallyOverridden, isUnknown, predictions, projectId, userOverride]);
 
+  // Phase 16: Derive intermediate GameUnderstanding
+  const understanding = useMemo(() => {
+    const targetType = isManuallyOverridden
+      ? userOverride
+      : (isUnknown ? undefined : activeGameType);
+
+    return GameUnderstandingExtractor.extract({
+      canvas,
+      predictions,
+      projectId,
+      source: isManuallyOverridden ? "manual" : "detection",
+      sourceDimensions: imageDimensions,
+      targetGameType: targetType,
+    });
+  }, [activeGameType, canvas, imageDimensions, isManuallyOverridden, isUnknown, predictions, projectId, userOverride]);
+
+  const objectBreakdown = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const o of understanding.objects) {
+      counts[o.role] = (counts[o.role] ?? 0) + 1;
+    }
+    return Object.entries(counts);
+  }, [understanding.objects]);
+
   useEffect(() => {
     if (generationResult.success && generationResult.gameDefinition && !currentGameDefinition) {
       setProjectGameDefinition(projectId, generationResult.gameDefinition);
@@ -269,9 +297,26 @@ export function GameRecognitionPanel({
       <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-3.5 space-y-2.5">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-[11px] font-medium uppercase tracking-wider text-slate-400">
-              {isManuallyOverridden ? "Manually Selected" : "Detected Game Type"}
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="text-[11px] font-medium uppercase tracking-wider text-slate-400">
+                {isManuallyOverridden ? "Manually Selected" : "Detected Game Type"}
+              </p>
+              <span
+                className={`rounded-full px-2 py-0.2 text-[9px] font-semibold uppercase tracking-wider ${
+                  isManuallyOverridden
+                    ? "bg-indigo-100 text-indigo-700 border border-indigo-200"
+                    : autoResult.source === "detection"
+                      ? "bg-emerald-100 text-emerald-700 border border-emerald-200"
+                      : "bg-slate-200 text-slate-700 border border-slate-300"
+                }`}
+              >
+                {isManuallyOverridden
+                  ? "User Choice"
+                  : autoResult.source === "detection"
+                    ? "Model Detected"
+                    : "Spatial Heuristic"}
+              </span>
+            </div>
             <h4 className="text-base font-bold text-slate-900">
               {isUnknown
                 ? "Unknown / Ambiguous"
@@ -323,6 +368,83 @@ export function GameRecognitionPanel({
           </ul>
         )}
       </div>
+
+      {/* Phase 16: Semantic Object Candidates */}
+      {objectBreakdown.length > 0 && (
+        <div className="space-y-1.5 text-xs pt-1 border-t border-slate-100">
+          <div className="flex items-center justify-between">
+            <span className="font-semibold text-slate-700 flex items-center gap-1.5">
+              <Layers className="size-3.5 text-emerald-600" />
+              Detected Entities:
+            </span>
+            <span className="text-[10px] text-slate-400 font-mono">
+              {understanding.objects.length} total
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-1.5 pt-0.5">
+            {objectBreakdown.map(([role, count]) => (
+              <span
+                key={role}
+                className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700 border border-slate-200/80"
+              >
+                <span className="capitalize">{role}</span>
+                <span className="text-slate-400">×{count}</span>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Phase 16: Spatial Topology & Grouping */}
+      {understanding.layout.type !== "unknown" && (
+        <div className="rounded-xl border border-indigo-100 bg-indigo-50/40 p-3 text-xs space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="font-semibold text-indigo-950 flex items-center gap-1.5">
+              <Network className="size-3.5 text-indigo-600" />
+              Spatial Topology:
+            </span>
+            <span className="text-[10px] uppercase font-semibold text-indigo-700 bg-indigo-100/80 px-2 py-0.5 rounded-full">
+              {understanding.layout.type}
+            </span>
+          </div>
+          {understanding.groups && understanding.groups.length > 0 && (
+            <ul className="space-y-1 text-[11px] text-indigo-900/90 pl-1">
+              {understanding.groups.slice(0, 3).map((g) => (
+                <li key={g.id} className="flex items-center gap-1.5">
+                  <span className="text-indigo-400">•</span>
+                  <span>
+                    {g.type === "row" && `Horizontal row (${g.objectIds.length} elements)`}
+                    {g.type === "column" && `Vertical column (${g.objectIds.length} elements)`}
+                    {g.type === "grid" && `Grid structure (${g.objectIds.length} cells)`}
+                    {g.type === "repeated" && `Repeated ${g.properties?.entityClass} (${g.objectIds.length} items)`}
+                    {g.type === "cluster" && `Object cluster (${g.objectIds.length} elements)`}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
+      {/* Phase 16: Inferred Capabilities */}
+      {understanding.capabilities.length > 0 && (
+        <div className="space-y-1.5 text-xs pt-1 border-t border-slate-100">
+          <span className="font-semibold text-slate-700 flex items-center gap-1.5">
+            <Cpu className="size-3.5 text-slate-600" />
+            Active Runtime Capabilities:
+          </span>
+          <div className="flex flex-wrap gap-1">
+            {understanding.capabilities.map((cap) => (
+              <span
+                key={cap}
+                className="inline-flex items-center rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-mono font-medium text-slate-700 border border-slate-200"
+              >
+                {cap}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Warnings & Suggestions */}
       {warnings.length > 0 && (

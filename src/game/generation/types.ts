@@ -6,7 +6,10 @@
  * warnings, errors, and output results of the generation pipeline.
  */
 
+import type { GameCapability } from "@/game/core/game-capabilities";
 import type { GameDefinition, GameType } from "@/game/core/game-definition";
+import type { InteractionInference } from "@/game/recognition/interaction-types";
+import type { LayoutStructure, ObjectGroup, SpatialRelationship } from "@/game/recognition/spatial-types";
 import type { GameRecognitionResult, StructuralFeatures } from "@/game/recognition/types";
 import type { DetectionPrediction } from "@/types/detection";
 
@@ -42,15 +45,34 @@ export interface GameRuleCandidate {
 }
 
 /**
+ * Diagnostic message generated during game understanding analysis.
+ */
+export interface GameUnderstandingDiagnostic {
+  code: string;
+  entityId?: string | undefined;
+  message: string;
+  severity: "info" | "warning" | "error";
+}
+
+/**
  * Intermediate semantic representation bridging raw detections/features
  * and genre-specific GameDefinition generators.
  */
 export interface GameUnderstanding {
+  capabilities: GameCapability[];
   confidence: number;
+  diagnostics?: GameUnderstandingDiagnostic[] | undefined;
   gameType: GameType | "unknown";
   genreSpecificData?: Record<string, unknown> | undefined;
+  groups?: ObjectGroup[] | undefined;
+  interactions: InteractionInference[];
+  layout: LayoutStructure;
   objectCandidates: GameObjectCandidate[];
+  objects: GameObjectCandidate[];
+  relationships: SpatialRelationship[];
   ruleCandidates: GameRuleCandidate[];
+  rules: GameRuleCandidate[];
+  sourceTracking?: Record<string, string> | undefined;
   structuralFeatures?: StructuralFeatures | undefined;
 }
 
